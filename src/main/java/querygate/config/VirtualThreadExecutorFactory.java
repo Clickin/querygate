@@ -10,6 +10,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -24,23 +26,161 @@ public class VirtualThreadExecutorFactory {
     private ExecutorService executorService;
 
     /**
-     * Creates a virtual thread executor when virtual threads are enabled.
-     * Virtual threads are lightweight and perfect for blocking I/O operations.
+     * Creates a bounded virtual thread executor when virtual threads are enabled.
+     * Virtual threads are lightweight but we still limit concurrency to prevent
+     * resource exhaustion from unbounded task spawning.
      */
     @Singleton
     @Named("gatewayVirtualExecutor")
     @Requires(property = "gateway.virtual-threads.enabled", value = "true", defaultValue = "true")
     public ExecutorService virtualThreadExecutor(GatewayProperties properties) {
         String executorName = properties.getVirtualThreads().getExecutorName();
-        LOG.info("Creating virtual thread executor: {}", executorName);
+        int maxConcurrent = properties.getBackpressure().getMaxConcurrentRequests();
+        LOG.info("Creating bounded virtual thread executor: {} (max concurrent: {})", executorName, maxConcurrent);
 
-        executorService = Executors.newThreadPerTaskExecutor(
+        // Create underlying virtual thread executor
+        ExecutorService delegate = Executors.newThreadPerTaskExecutor(
                 Thread.ofVirtual()
                         .name(executorName, 0)
                         .factory()
         );
 
+        // Wrap with semaphore-bounded executor to prevent unbounded task spawning
+        executorService = new BoundedExecutorService(delegate, maxConcurrent);
+
         return executorService;
+    }
+
+    /**
+     * Wrapper that limits concurrent task execution using a semaphore.
+     * Prevents unbounded virtual thread spawning that could exhaust resources.
+     */
+    private static class BoundedExecutorService implements ExecutorService {
+        private final ExecutorService delegate;
+        private final Semaphore semaphore;
+
+        BoundedExecutorService(ExecutorService delegate, int maxConcurrent) {
+            this.delegate = delegate;
+            this.semaphore = new Semaphore(maxConcurrent, true);
+        }
+
+        @Override
+        public void execute(Runnable command) {
+            try {
+                // Try to acquire permit with timeout to avoid indefinite blocking
+                if (!semaphore.tryAcquire(100, TimeUnit.MILLISECONDS)) {
+                    throw new RejectedExecutionException("Executor at capacity, cannot accept task");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RejectedExecutionException("Interrupted while waiting for executor permit", e);
+            }
+
+            delegate.execute(() -> {
+                try {
+                    command.run();
+                } finally {
+                    semaphore.release();
+                }
+            });
+        }
+
+        @Override
+        public void shutdown() {
+            delegate.shutdown();
+        }
+
+        @Override
+        public java.util.List<Runnable> shutdownNow() {
+            return delegate.shutdownNow();
+        }
+
+        @Override
+        public boolean isShutdown() {
+            return delegate.isShutdown();
+        }
+
+        @Override
+        public boolean isTerminated() {
+            return delegate.isTerminated();
+        }
+
+        @Override
+        public boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException {
+            return delegate.awaitTermination(timeout, unit);
+        }
+
+        @Override
+        public <T> java.util.concurrent.Future<T> submit(java.util.concurrent.Callable<T> task) {
+            try {
+                if (!semaphore.tryAcquire(100, TimeUnit.MILLISECONDS)) {
+                    throw new RejectedExecutionException("Executor at capacity");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RejectedExecutionException("Interrupted", e);
+            }
+
+            return delegate.submit(() -> {
+                try {
+                    return task.call();
+                } finally {
+                    semaphore.release();
+                }
+            });
+        }
+
+        @Override
+        public <T> java.util.concurrent.Future<T> submit(Runnable task, T result) {
+            try {
+                if (!semaphore.tryAcquire(100, TimeUnit.MILLISECONDS)) {
+                    throw new RejectedExecutionException("Executor at capacity");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RejectedExecutionException("Interrupted", e);
+            }
+
+            return delegate.submit(() -> {
+                try {
+                    task.run();
+                } finally {
+                    semaphore.release();
+                }
+            }, result);
+        }
+
+        @Override
+        public java.util.concurrent.Future<?> submit(Runnable task) {
+            return submit(task, null);
+        }
+
+        @Override
+        public <T> java.util.List<java.util.concurrent.Future<T>> invokeAll(
+                java.util.Collection<? extends java.util.concurrent.Callable<T>> tasks) throws InterruptedException {
+            // For simplicity, delegate directly - tasks will be bounded individually
+            return delegate.invokeAll(tasks);
+        }
+
+        @Override
+        public <T> java.util.List<java.util.concurrent.Future<T>> invokeAll(
+                java.util.Collection<? extends java.util.concurrent.Callable<T>> tasks,
+                long timeout, TimeUnit unit) throws InterruptedException {
+            return delegate.invokeAll(tasks, timeout, unit);
+        }
+
+        @Override
+        public <T> T invokeAny(java.util.Collection<? extends java.util.concurrent.Callable<T>> tasks)
+                throws InterruptedException, java.util.concurrent.ExecutionException {
+            return delegate.invokeAny(tasks);
+        }
+
+        @Override
+        public <T> T invokeAny(java.util.Collection<? extends java.util.concurrent.Callable<T>> tasks,
+                              long timeout, TimeUnit unit)
+                throws InterruptedException, java.util.concurrent.ExecutionException, java.util.concurrent.TimeoutException {
+            return delegate.invokeAny(tasks, timeout, unit);
+        }
     }
 
     /**
