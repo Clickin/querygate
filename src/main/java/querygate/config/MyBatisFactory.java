@@ -73,9 +73,18 @@ public class MyBatisFactory {
 
         // Apply settings from properties
         GatewayProperties.MyBatisConfig mybatisConfig = gatewayProperties.getMybatis();
+        GatewayProperties.BackpressureConfig backpressureConfig = gatewayProperties.getBackpressure();
         configuration.setCacheEnabled(mybatisConfig.isCacheEnabled());
         configuration.setLazyLoadingEnabled(mybatisConfig.isLazyLoadingEnabled());
-        configuration.setDefaultStatementTimeout(mybatisConfig.getDefaultStatementTimeout());
+
+        // Use backpressure statement timeout if set, otherwise fall back to mybatis default
+        // This ensures DB work respects the configured SLA
+        int statementTimeout = (int) backpressureConfig.getStatementTimeoutSeconds();
+        if (statementTimeout <= 0) {
+            statementTimeout = mybatisConfig.getDefaultStatementTimeout();
+        }
+        configuration.setDefaultStatementTimeout(statementTimeout);
+        LOG.info("MyBatis statement timeout set to {} seconds", statementTimeout);
 
         // Additional MyBatis settings for Map-based results
         configuration.setMapUnderscoreToCamelCase(true);

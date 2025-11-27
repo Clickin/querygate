@@ -11,6 +11,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.List;
 import java.util.Map;
 
@@ -36,7 +38,8 @@ public class ApiKeyTokenValidator<T> implements TokenValidator<T> {
             return Mono.empty();
         }
 
-        if (securityConfig.getApiKeys().contains(token)) {
+        // Use constant-time comparison to prevent timing attacks
+        if (isValidApiKey(token)) {
             LOG.debug("API key validated successfully");
             return Mono.just(Authentication.build(
                     "api-client",
@@ -47,5 +50,26 @@ public class ApiKeyTokenValidator<T> implements TokenValidator<T> {
 
         LOG.warn("Invalid API key attempt");
         return Mono.empty();
+    }
+
+    /**
+     * Validates API key using constant-time comparison to prevent timing attacks.
+     * Compares against all configured keys in constant time regardless of which one matches.
+     */
+    private boolean isValidApiKey(String token) {
+        byte[] tokenBytes = token.getBytes(StandardCharsets.UTF_8);
+        boolean valid = false;
+
+        // Always compare against all keys to maintain constant time
+        for (String configuredKey : securityConfig.getApiKeys()) {
+            byte[] keyBytes = configuredKey.getBytes(StandardCharsets.UTF_8);
+            // MessageDigest.isEqual performs constant-time comparison
+            if (MessageDigest.isEqual(tokenBytes, keyBytes)) {
+                valid = true;
+                // Don't return early - continue checking all keys for constant time
+            }
+        }
+
+        return valid;
     }
 }

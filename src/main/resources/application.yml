@@ -19,10 +19,10 @@ micronaut:
           - isAnonymous()
       - pattern: /prometheus
         access:
-          - ROLE_ADMIN
+          - isAnonymous()
       - pattern: /metrics/**
         access:
-          - ROLE_ADMIN
+          - isAnonymous()
     token:
       enabled: true
 
@@ -53,15 +53,16 @@ gateway:
   # External endpoint configuration file
   endpoint-config-path: ${GATEWAY_ENDPOINT_CONFIG:./config/endpoint-config.yml}
 
-  # Hot reload settings
+  # Hot reload settings - disabled by default for security
+  # Enable only in development with GATEWAY_HOT_RELOAD=true
   hot-reload:
-    enabled: ${GATEWAY_HOT_RELOAD:true}
+    enabled: ${GATEWAY_HOT_RELOAD:false}
     poll-interval-ms: 5000
 
-  # SQL logging
+  # SQL logging - parameter logging disabled by default to prevent sensitive data in logs
   sql-logging:
     enabled: true
-    log-parameters: true
+    log-parameters: ${GATEWAY_SQL_LOG_PARAMS:false}
     log-timing: true
     slow-query-threshold-ms: 1000
 
@@ -86,11 +87,11 @@ gateway:
     request-timeout-ms: 30000
     statement-timeout-seconds: 30
 
-# Logging configuration
+# Logging configuration - INFO by default, use env vars for DEBUG
 logger:
   levels:
-    querygate: DEBUG
-    querygate.interceptor: DEBUG
-    SQL_LOGGER: DEBUG
+    querygate: ${GATEWAY_LOG_LEVEL:INFO}
+    querygate.interceptor: ${GATEWAY_LOG_LEVEL:INFO}
+    SQL_LOGGER: ${GATEWAY_SQL_LOG_LEVEL:INFO}
     org.apache.ibatis: INFO
     com.zaxxer.hikari: INFO

@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * HTTP filter that implements backpressure by limiting concurrent requests.
- * Returns 503 Service Unavailable when the system is overloaded.
+ * Returns 429 Too Many Requests when the system is overloaded, signaling retry semantics.
  */
 @Filter("/api/**")
 @Requires(property = "gateway.backpressure.enabled", value = "true", defaultValue = "true")
@@ -73,7 +73,7 @@ public class BackpressureFilter implements HttpServerFilter {
                     request.getMethod(), request.getPath(), activeRequests.get());
             meterRegistry.counter("gateway.backpressure.rejections",
                     "path", request.getPath()).increment();
-            return Mono.just(serviceUnavailable("Service overloaded, please retry later"));
+            return Mono.just(tooManyRequests("Too many requests, please retry later"));
         }
 
         activeRequests.incrementAndGet();
@@ -110,6 +110,16 @@ public class BackpressureFilter implements HttpServerFilter {
                 .body(Map.of(
                         "success", false,
                         "error", "Service Unavailable",
+                        "message", message
+                ));
+    }
+
+    private MutableHttpResponse<?> tooManyRequests(String message) {
+        return HttpResponse.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", "5")
+                .body(Map.of(
+                        "success", false,
+                        "error", "Too Many Requests",
                         "message", message
                 ));
     }

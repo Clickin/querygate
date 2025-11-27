@@ -131,11 +131,12 @@ public class GatewayProperties {
 
     /**
      * Hot reload configuration properties.
+     * Disabled by default for security - enable only in development.
      */
     @ConfigurationProperties("hot-reload")
     public static class HotReloadConfig {
 
-        private boolean enabled = true;
+        private boolean enabled = false;
 
         @Positive
         private long pollIntervalMs = 5000;
@@ -159,13 +160,14 @@ public class GatewayProperties {
 
     /**
      * SQL logging configuration properties.
+     * Parameter logging disabled by default to prevent sensitive data in logs.
      */
     @ConfigurationProperties("sql-logging")
     public static class SqlLoggingConfig {
 
         private boolean enabled = true;
 
-        private boolean logParameters = true;
+        private boolean logParameters = false;
 
         private boolean logTiming = true;
 
