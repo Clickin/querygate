@@ -1,0 +1,43 @@
+# Production profile - secure defaults
+# Activate with: MICRONAUT_ENVIRONMENTS=prod
+
+micronaut:
+  security:
+    enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: false  # Disable unless explicitly needed
+
+# Gateway production settings
+gateway:
+  # Disable hot reload in production
+  hot-reload:
+    enabled: false
+
+  # Disable parameter logging in production
+  sql-logging:
+    enabled: true
+    log-parameters: false
+    log-timing: true
+    slow-query-threshold-ms: 500
+
+  # Security must be enabled
+  security:
+    enabled: true
+
+  # Tighter backpressure in production
+  backpressure:
+    enabled: true
+    max-concurrent-requests: 50
+    request-timeout-ms: 15000
+    statement-timeout-seconds: 15
+
+# Production logging - no DEBUG in production
+logger:
+  levels:
+    generic.db.gateway: INFO
+    generic.db.gateway.interceptor: WARN
+    SQL_LOGGER: WARN
+    org.apache.ibatis: WARN
+    com.zaxxer.hikari: WARN

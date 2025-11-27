@@ -5,7 +5,7 @@ plugins {
 }
 
 version = "0.1"
-group = "generic.db.gateway"
+group = "querygate"
 
 repositories {
     mavenCentral()
@@ -20,9 +20,12 @@ dependencies {
     annotationProcessor("io.micronaut:micronaut-http-validation")
     annotationProcessor("io.micronaut.serde:micronaut-serde-processor")
     annotationProcessor("io.micronaut.validation:micronaut-validation-processor")
+    annotationProcessor("io.micronaut.security:micronaut-security-annotations")
 
     // Core Micronaut
     implementation("io.micronaut:micronaut-management")
+    implementation("io.micronaut.security:micronaut-security")
+    implementation("io.projectreactor:reactor-core")
     implementation("io.micronaut.micrometer:micronaut-micrometer-core")
     implementation("io.micronaut.micrometer:micronaut-micrometer-registry-prometheus")
     implementation("io.micronaut.serde:micronaut-serde-jackson")
@@ -60,7 +63,7 @@ dependencies {
 
 
 application {
-    mainClass = "generic.db.gateway.Application"
+    mainClass = "querygate.Application"
 }
 java {
     sourceCompatibility = JavaVersion.toVersion("21")
@@ -75,7 +78,7 @@ micronaut {
     testRuntime("junit5")
     processing {
         incremental(true)
-        annotations("generic.db.gateway.*")
+        annotations("querygate.*")
     }
     aot {
         // Please review carefully the optimizations enabled below
@@ -146,7 +149,7 @@ LIB_PATH="\$SCRIPT_DIR/lib/*"
 
 java \$JAVA_OPTS \\
     -cp "\$LIB_PATH:\$SCRIPT_DIR/${project.name}-${version}-app.jar" \\
-    generic.db.gateway.Application "\$@"
+    querygate.Application "\$@"
 """
 
         // Windows script
@@ -158,7 +161,7 @@ set LIB_PATH=%SCRIPT_DIR%lib\\*
 
 java %JAVA_OPTS% ^
     -cp "%LIB_PATH%;%SCRIPT_DIR%${project.name}-${version}-app.jar" ^
-    generic.db.gateway.Application %*
+    querygate.Application %*
 """
     }
 }

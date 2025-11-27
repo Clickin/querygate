@@ -1,6 +1,6 @@
 micronaut:
   application:
-    name: generic-db-gateway
+    name: querygate
   server:
     port: 8080
     thread-selection: AUTO
@@ -11,6 +11,20 @@ micronaut:
         enabled: true
         descriptions: true
         step: PT1M
+  security:
+    enabled: ${GATEWAY_SECURITY_ENABLED:true}
+    intercept-url-map:
+      - pattern: /health
+        access:
+          - isAnonymous()
+      - pattern: /prometheus
+        access:
+          - ROLE_ADMIN
+      - pattern: /metrics/**
+        access:
+          - ROLE_ADMIN
+    token:
+      enabled: true
 
 # Datasource configuration (HikariCP)
 datasources:
@@ -56,10 +70,27 @@ gateway:
     enabled: true
     executor-name: gateway-virtual-executor
 
+  # Security configuration
+  security:
+    enabled: ${GATEWAY_SECURITY_ENABLED:true}
+    api-key-header: X-API-Key
+    api-keys: ${GATEWAY_API_KEYS:}
+    allowed-networks:
+      - 127.0.0.1
+      - "::1"
+
+  # Backpressure configuration
+  backpressure:
+    enabled: true
+    max-concurrent-requests: ${GATEWAY_MAX_CONCURRENT:100}
+    request-timeout-ms: 30000
+    statement-timeout-seconds: 30
+
 # Logging configuration
 logger:
   levels:
-    generic.db.gateway: DEBUG
-    generic.db.gateway.interceptor: DEBUG
+    querygate: DEBUG
+    querygate.interceptor: DEBUG
+    SQL_LOGGER: DEBUG
     org.apache.ibatis: INFO
     com.zaxxer.hikari: INFO
