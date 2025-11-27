@@ -1,0 +1,65 @@
+micronaut:
+  application:
+    name: generic-db-gateway
+  server:
+    port: 8080
+    thread-selection: AUTO
+  metrics:
+    enabled: true
+    export:
+      prometheus:
+        enabled: true
+        descriptions: true
+        step: PT1M
+
+# Datasource configuration (HikariCP)
+datasources:
+  default:
+    url: "jdbc:h2:mem:devDb;LOCK_TIMEOUT=10000;DB_CLOSE_ON_EXIT=FALSE"
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+    pool-name: HikariPool-Gateway
+    maximum-pool-size: 20
+    minimum-idle: 5
+    connection-timeout: 30000
+    idle-timeout: 600000
+    max-lifetime: 1800000
+    leak-detection-threshold: 60000
+
+# Gateway-specific configuration
+gateway:
+  # External MyBatis mapper location
+  mybatis:
+    mapper-locations: ${GATEWAY_MAPPER_PATH:./config/mappers}
+    cache-enabled: false
+    lazy-loading-enabled: false
+    default-statement-timeout: 30
+
+  # External endpoint configuration file
+  endpoint-config-path: ${GATEWAY_ENDPOINT_CONFIG:./config/endpoint-config.yml}
+
+  # Hot reload settings
+  hot-reload:
+    enabled: ${GATEWAY_HOT_RELOAD:true}
+    poll-interval-ms: 5000
+
+  # SQL logging
+  sql-logging:
+    enabled: true
+    log-parameters: true
+    log-timing: true
+    slow-query-threshold-ms: 1000
+
+  # Virtual thread configuration
+  virtual-threads:
+    enabled: true
+    executor-name: gateway-virtual-executor
+
+# Logging configuration
+logger:
+  levels:
+    generic.db.gateway: DEBUG
+    generic.db.gateway.interceptor: DEBUG
+    org.apache.ibatis: INFO
+    com.zaxxer.hikari: INFO

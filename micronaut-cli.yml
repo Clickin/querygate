@@ -1,0 +1,6 @@
+applicationType: default
+defaultPackage: generic.db.gateway
+testFramework: junit
+sourceLanguage: java
+buildTool: gradle
+features: [app-name, gradle, h2, http-client-test, java, java-application, jdbc-hikari, junit, logback, management, micrometer, micrometer-prometheus, micronaut-aot, micronaut-build, micronaut-http-validation, netty-server, properties, readme, serialization-jackson, shade, static-resources]

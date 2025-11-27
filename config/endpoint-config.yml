@@ -1,0 +1,121 @@
+version: "1.0"
+
+# Global defaults for all endpoints
+defaults:
+  response-format: json
+  max-rows: 1000
+  timeout-seconds: 30
+
+# Endpoint definitions
+# Maps HTTP endpoints to MyBatis SQL statements
+endpoints:
+  # GET /api/users -> selectList
+  - path: /api/users
+    method: GET
+    sql-id: UserMapper.selectAllUsers
+    sql-type: SELECT
+    description: "Retrieve all users with optional filters"
+    validation:
+      required: []
+      optional:
+        - name: status
+          type: string
+          allowed-values: [ACTIVE, INACTIVE, PENDING]
+        - name: username
+          type: string
+          max-length: 50
+        - name: limit
+          type: integer
+          min: 1
+          max: 100
+          default: 20
+        - name: offset
+          type: integer
+          min: 0
+          default: 0
+
+  # GET /api/users/{id} -> selectOne
+  - path: /api/users/{id}
+    method: GET
+    sql-id: UserMapper.selectUserById
+    sql-type: SELECT
+    description: "Retrieve a single user by ID"
+    validation:
+      required:
+        - name: id
+          type: long
+          source: path
+      optional: []
+
+  # POST /api/users -> insert
+  - path: /api/users
+    method: POST
+    sql-id: UserMapper.insertUser
+    sql-type: INSERT
+    description: "Create a new user"
+    validation:
+      required:
+        - name: username
+          type: string
+          min-length: 3
+          max-length: 50
+          pattern: "^[a-zA-Z0-9_]+$"
+        - name: email
+          type: string
+          pattern: "^[\\w\\-\\.]+@[\\w\\-]+\\.[a-z]{2,}$"
+      optional:
+        - name: status
+          type: string
+          default: PENDING
+
+  # PUT /api/users/{id} -> update
+  - path: /api/users/{id}
+    method: PUT
+    sql-id: UserMapper.updateUser
+    sql-type: UPDATE
+    description: "Update an existing user"
+    validation:
+      required:
+        - name: id
+          type: long
+          source: path
+      optional:
+        - name: username
+          type: string
+          min-length: 3
+          max-length: 50
+        - name: email
+          type: string
+        - name: status
+          type: string
+          allowed-values: [ACTIVE, INACTIVE, PENDING]
+
+  # DELETE /api/users/{id} -> delete
+  - path: /api/users/{id}
+    method: DELETE
+    sql-id: UserMapper.deleteUser
+    sql-type: DELETE
+    description: "Delete a user by ID"
+    validation:
+      required:
+        - name: id
+          type: long
+          source: path
+      optional: []
+
+  # POST /api/users/batch -> batch insert
+  - path: /api/users/batch
+    method: POST
+    sql-id: UserMapper.batchInsertUser
+    sql-type: BATCH
+    description: "Batch insert multiple users"
+    batch-config:
+      item-key: users
+      batch-size: 100
+    validation:
+      required:
+        - name: users
+          type: array
+          min-items: 1
+          max-items: 1000
+      optional: []

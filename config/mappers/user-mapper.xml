@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="UserMapper">
+
+    <!-- Select all users with optional filters -->
+    <select id="selectAllUsers" resultType="map">
+        SELECT id, username, email, status, created_at, updated_at
+        FROM users
+        <where>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+            <if test="username != null and username != ''">
+                AND username LIKE CONCAT('%', #{username}, '%')
+            </if>
+        </where>
+        ORDER BY created_at DESC
+        <if test="limit != null">
+            LIMIT #{limit}
+        </if>
+        <if test="offset != null">
+            OFFSET #{offset}
+        </if>
+    </select>
+
+    <!-- Select single user by ID -->
+    <select id="selectUserById" resultType="map">
+        SELECT id, username, email, status, created_at, updated_at
+        FROM users
+        WHERE id = #{id}
+    </select>
+
+    <!-- Insert new user -->
+    <insert id="insertUser" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO users (username, email, status, created_at)
+        VALUES (
+            #{username},
+            #{email},
+            #{status,jdbcType=VARCHAR},
+            CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <!-- Update existing user -->
+    <update id="updateUser">
+        UPDATE users
+        <set>
+            <if test="username != null">username = #{username},</if>
+            <if test="email != null">email = #{email},</if>
+            <if test="status != null">status = #{status},</if>
+            updated_at = CURRENT_TIMESTAMP
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- Delete user by ID -->
+    <delete id="deleteUser">
+        DELETE FROM users WHERE id = #{id}
+    </delete>
+
+    <!-- Batch insert user (called repeatedly in batch mode) -->
+    <insert id="batchInsertUser">
+        INSERT INTO users (username, email, status, created_at)
+        VALUES (
+            #{username},
+            #{email},
+            #{status,jdbcType=VARCHAR},
+            CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <!-- Select users by multiple IDs -->
+    <select id="selectUsersByIds" resultType="map">
+        SELECT id, username, email, status, created_at, updated_at
+        FROM users
+        WHERE id IN
+        <foreach item="id" index="index" collection="ids" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
+</mapper>

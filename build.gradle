@@ -1,0 +1,166 @@
+plugins {
+    id("com.github.johnrengelman.shadow") version "8.1.1"
+    id("io.micronaut.application") version "4.4.4"
+    id("io.micronaut.aot") version "4.4.4"
+}
+
+version = "0.1"
+group = "generic.db.gateway"
+
+repositories {
+    mavenCentral()
+}
+
+configurations {
+    externalDrivers
+}
+
+dependencies {
+    // Annotation processors
+    annotationProcessor("io.micronaut:micronaut-http-validation")
+    annotationProcessor("io.micronaut.serde:micronaut-serde-processor")
+    annotationProcessor("io.micronaut.validation:micronaut-validation-processor")
+
+    // Core Micronaut
+    implementation("io.micronaut:micronaut-management")
+    implementation("io.micronaut.micrometer:micronaut-micrometer-core")
+    implementation("io.micronaut.micrometer:micronaut-micrometer-registry-prometheus")
+    implementation("io.micronaut.serde:micronaut-serde-jackson")
+    implementation("io.micronaut.sql:micronaut-jdbc-hikari")
+    implementation("io.micronaut.validation:micronaut-validation")
+
+    // MyBatis (manual configuration, no starter)
+    implementation("org.mybatis:mybatis:3.5.16")
+
+    // YAML parsing for external config
+    implementation("org.yaml:snakeyaml:2.2")
+
+    // XML response support (content negotiation)
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.17.0")
+
+    // HTTP client
+    compileOnly("io.micronaut:micronaut-http-client")
+
+    // Logging
+    runtimeOnly("ch.qos.logback:logback-classic")
+
+    // H2 for development (included in JAR)
+    runtimeOnly("com.h2database:h2")
+
+    // External JDBC drivers (not bundled in JAR - loaded from lib folder)
+    externalDrivers("com.oracle.database.jdbc:ojdbc11:23.3.0.23.09")
+    externalDrivers("com.mysql:mysql-connector-j:8.3.0")
+    externalDrivers("org.postgresql:postgresql:42.7.2")
+    externalDrivers("com.microsoft.sqlserver:mssql-jdbc:12.6.1.jre11")
+
+    // Testing
+    testImplementation("io.micronaut:micronaut-http-client")
+    testImplementation("org.assertj:assertj-core:3.25.3")
+}
+
+
+application {
+    mainClass = "generic.db.gateway.Application"
+}
+java {
+    sourceCompatibility = JavaVersion.toVersion("21")
+    targetCompatibility = JavaVersion.toVersion("21")
+}
+
+
+graalvmNative.toolchainDetection = false
+
+micronaut {
+    runtime("netty")
+    testRuntime("junit5")
+    processing {
+        incremental(true)
+        annotations("generic.db.gateway.*")
+    }
+    aot {
+        // Please review carefully the optimizations enabled below
+        // Check https://micronaut-projects.github.io/micronaut-aot/latest/guide/ for more details
+        optimizeServiceLoading = false
+        convertYamlToJava = false
+        precomputeOperations = true
+        cacheEnvironment = true
+        optimizeClassLoading = true
+        deduceEnvironment = true
+        optimizeNetty = true
+        replaceLogbackXml = true
+    }
+}
+
+
+tasks.named("dockerfileNative") {
+    jdkVersion = "21"
+}
+
+// Configure Shadow JAR for thin deployment
+shadowJar {
+    archiveClassifier.set('app')
+    mergeServiceFiles()
+}
+
+// Task to copy external drivers to lib folder
+tasks.register('copyExternalDrivers', Copy) {
+    from configurations.externalDrivers
+    into "${buildDir}/libs/lib"
+}
+
+// Task to create distribution with external lib folder
+tasks.register('createDistribution') {
+    dependsOn shadowJar, copyExternalDrivers
+
+    doLast {
+        // Copy main JAR
+        copy {
+            from "${buildDir}/libs/${project.name}-${version}-app.jar"
+            into "${buildDir}/dist"
+        }
+        // Copy lib folder
+        copy {
+            from "${buildDir}/libs/lib"
+            into "${buildDir}/dist/lib"
+        }
+        // Copy config folder if exists
+        if (file("config").exists()) {
+            copy {
+                from "config"
+                into "${buildDir}/dist/config"
+            }
+        }
+    }
+}
+
+// Task to create startup scripts
+tasks.register('createStartScripts') {
+    dependsOn createDistribution
+
+    doLast {
+        // Unix/Linux/Mac script
+        file("${buildDir}/dist/start.sh").text = """#!/bin/bash
+SCRIPT_DIR="\$(cd "\$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
+JAVA_OPTS="\${JAVA_OPTS:--Xms256m -Xmx512m}"
+LIB_PATH="\$SCRIPT_DIR/lib/*"
+
+java \$JAVA_OPTS \\
+    -cp "\$LIB_PATH:\$SCRIPT_DIR/${project.name}-${version}-app.jar" \\
+    generic.db.gateway.Application "\$@"
+"""
+
+        // Windows script
+        file("${buildDir}/dist/start.bat").text = """@echo off
+setlocal
+set SCRIPT_DIR=%~dp0
+if "%JAVA_OPTS%"=="" set JAVA_OPTS=-Xms256m -Xmx512m
+set LIB_PATH=%SCRIPT_DIR%lib\\*
+
+java %JAVA_OPTS% ^
+    -cp "%LIB_PATH%;%SCRIPT_DIR%${project.name}-${version}-app.jar" ^
+    generic.db.gateway.Application %*
+"""
+    }
+}
+
+
