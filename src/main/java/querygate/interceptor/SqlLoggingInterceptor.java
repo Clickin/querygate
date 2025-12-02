@@ -48,13 +48,13 @@ public class SqlLoggingInterceptor implements Interceptor {
     private final MeterRegistry meterRegistry;
 
     public SqlLoggingInterceptor(GatewayProperties properties, MeterRegistry meterRegistry) {
-        this.config = properties.getSqlLogging();
+        this.config = properties.sqlLogging();
         this.meterRegistry = meterRegistry;
     }
 
     @Override
     public Object intercept(Invocation invocation) throws Throwable {
-        if (!config.isEnabled()) {
+        if (!config.enabled()) {
             return invocation.proceed();
         }
 
@@ -66,7 +66,7 @@ public class SqlLoggingInterceptor implements Interceptor {
         String sql = normalizeSql(boundSql.getSql());
 
         String parameterStr = "";
-        if (config.isLogParameters()) {
+        if (config.logParameters()) {
             parameterStr = extractParameters(mappedStatement.getConfiguration(), boundSql);
         }
 
@@ -89,7 +89,7 @@ public class SqlLoggingInterceptor implements Interceptor {
 
     private void logSqlExecution(String sqlId, String sql, String params,
                                  long duration, Throwable error, String resultInfo) {
-        boolean isSlowQuery = duration >= config.getSlowQueryThresholdMs();
+        boolean isSlowQuery = duration >= config.slowQueryThresholdMs();
 
         StringBuilder logMessage = new StringBuilder();
         logMessage.append("\n=== SQL Execution ===\n");

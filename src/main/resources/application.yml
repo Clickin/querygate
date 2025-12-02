@@ -75,9 +75,6 @@ gateway:
     enabled: ${GATEWAY_SECURITY_ENABLED:true}
     api-key-header: X-API-Key
     api-keys: ${GATEWAY_API_KEYS:}
-    allowed-networks:
-      - 127.0.0.1
-      - "::1"
 
 # Logging configuration
 logger:

@@ -31,7 +31,7 @@ public class VirtualThreadExecutorFactory {
     @Named("gatewayVirtualExecutor")
     @Requires(property = "gateway.virtual-threads.enabled", value = "true", defaultValue = "true")
     public ExecutorService virtualThreadExecutor(GatewayProperties properties) {
-        String executorName = properties.getVirtualThreads().getExecutorName();
+        String executorName = properties.virtualThreads().executorName();
         LOG.info("Creating virtual thread executor: {}", executorName);
 
         executorService = Executors.newThreadPerTaskExecutor(

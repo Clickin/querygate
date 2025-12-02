@@ -93,7 +93,7 @@ public class XmlReloadService {
      */
     private void registerWatchPaths() throws IOException {
         // Watch mapper directory
-        Path mapperDir = Paths.get(properties.getMybatis().getMapperLocations());
+        Path mapperDir = Paths.get(properties.mybatis().mapperLocations());
         if (Files.exists(mapperDir) && Files.isDirectory(mapperDir)) {
             mapperDir.register(watchService,
                     StandardWatchEventKinds.ENTRY_CREATE,
@@ -105,7 +105,7 @@ public class XmlReloadService {
         }
 
         // Watch endpoint config file's parent directory
-        Path endpointConfigPath = Paths.get(properties.getEndpointConfigPath());
+        Path endpointConfigPath = Paths.get(properties.endpointConfigPath());
         Path configDir = endpointConfigPath.getParent();
         if (configDir != null && Files.exists(configDir)) {
             configDir.register(watchService,
@@ -119,15 +119,15 @@ public class XmlReloadService {
      */
     private void watchLoop() {
         LOG.info("File watch loop started");
-        Path mapperDir = Paths.get(properties.getMybatis().getMapperLocations());
-        Path endpointConfigPath = Paths.get(properties.getEndpointConfigPath());
+        Path mapperDir = Paths.get(properties.mybatis().mapperLocations());
+        Path endpointConfigPath = Paths.get(properties.endpointConfigPath());
         String endpointConfigFileName = endpointConfigPath.getFileName().toString();
 
         while (running.get()) {
             try {
                 // Wait for events with timeout to allow checking running flag
                 WatchKey key = watchService.poll(
-                        properties.getHotReload().getPollIntervalMs(),
+                        properties.hotReload().pollIntervalMs(),
                         java.util.concurrent.TimeUnit.MILLISECONDS);
 
                 if (key == null) {

@@ -72,10 +72,10 @@ public class MyBatisFactory {
         Configuration configuration = new Configuration(environment);
 
         // Apply settings from properties
-        GatewayProperties.MyBatisConfig mybatisConfig = gatewayProperties.getMybatis();
-        configuration.setCacheEnabled(mybatisConfig.isCacheEnabled());
-        configuration.setLazyLoadingEnabled(mybatisConfig.isLazyLoadingEnabled());
-        configuration.setDefaultStatementTimeout(mybatisConfig.getDefaultStatementTimeout());
+        GatewayProperties.MyBatisConfig mybatisConfig = gatewayProperties.mybatis();
+        configuration.setCacheEnabled(mybatisConfig.cacheEnabled());
+        configuration.setLazyLoadingEnabled(mybatisConfig.lazyLoadingEnabled());
+        configuration.setDefaultStatementTimeout(mybatisConfig.defaultStatementTimeout());
 
         // Additional MyBatis settings for Map-based results
         configuration.setMapUnderscoreToCamelCase(true);
@@ -83,7 +83,7 @@ public class MyBatisFactory {
         configuration.setReturnInstanceForEmptyRow(true);
 
         // Add SQL logging interceptor
-        if (gatewayProperties.getSqlLogging().isEnabled()) {
+        if (gatewayProperties.sqlLogging().enabled()) {
             configuration.addInterceptor(sqlLoggingInterceptor);
             LOG.debug("SQL logging interceptor added");
         }
@@ -101,7 +101,7 @@ public class MyBatisFactory {
      * Loads all XML mapper files from the external mapper directory.
      */
     private void loadExternalMappers(Configuration configuration) {
-        String mapperLocation = gatewayProperties.getMybatis().getMapperLocations();
+        String mapperLocation = gatewayProperties.mybatis().mapperLocations();
         Path mapperDir = Paths.get(mapperLocation);
 
         LOG.info("Loading MyBatis mappers from: {}", mapperDir.toAbsolutePath());
@@ -202,7 +202,7 @@ public class MyBatisFactory {
      * @return true if mappers exist
      */
     public boolean hasMappers() {
-        String mapperLocation = gatewayProperties.getMybatis().getMapperLocations();
+        String mapperLocation = gatewayProperties.mybatis().mapperLocations();
         Path mapperDir = Paths.get(mapperLocation);
 
         if (!Files.exists(mapperDir) || !Files.isDirectory(mapperDir)) {

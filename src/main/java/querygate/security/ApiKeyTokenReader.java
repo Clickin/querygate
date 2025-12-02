@@ -22,7 +22,7 @@ public class ApiKeyTokenReader implements TokenReader<HttpRequest<?>> {
     private final String apiKeyHeader;
 
     public ApiKeyTokenReader(GatewayProperties properties) {
-        this.apiKeyHeader = properties.getSecurity().getApiKeyHeader();
+        this.apiKeyHeader = properties.security().apiKeyHeader();
     }
 
     @Override

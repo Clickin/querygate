@@ -18,8 +18,7 @@ class ApiKeyTokenValidatorTest {
 
     @Test
     void returnsRoleForValidKey() {
-        GatewayProperties properties = new GatewayProperties();
-        properties.getSecurity().setApiKeys(List.of("secret-key"));
+        GatewayProperties properties = propertiesWithKeys(List.of("secret-key"));
 
         ApiKeyTokenValidator<Object> validator = new ApiKeyTokenValidator<>(properties);
 
@@ -33,8 +32,7 @@ class ApiKeyTokenValidatorTest {
 
     @Test
     void returnsEmptyForUnknownOrBlankKeys() {
-        GatewayProperties properties = new GatewayProperties();
-        properties.getSecurity().setApiKeys(List.of("secret-key"));
+        GatewayProperties properties = propertiesWithKeys(List.of("secret-key"));
 
         ApiKeyTokenValidator<Object> validator = new ApiKeyTokenValidator<>(properties);
 
@@ -87,5 +85,12 @@ class ApiKeyTokenValidatorTest {
         }
 
         return value.get();
+    }
+
+    private GatewayProperties propertiesWithKeys(List<String> keys) {
+        GatewayProperties.SecurityConfig security =
+                new GatewayProperties.SecurityConfig(true, "X-API-Key", keys);
+
+        return new GatewayProperties(null, null, null, null, null, security);
     }
 }

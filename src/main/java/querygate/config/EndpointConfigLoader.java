@@ -55,7 +55,7 @@ public class EndpointConfigLoader {
      * Loads endpoint configuration from the YAML file.
      */
     public synchronized void loadConfiguration() {
-        String configPath = properties.getEndpointConfigPath();
+        String configPath = properties.endpointConfigPath();
         Path path = Paths.get(configPath);
 
         LOG.info("Loading endpoint configuration from: {}", path.toAbsolutePath());

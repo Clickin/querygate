@@ -27,7 +27,7 @@ public class ApiKeyTokenValidator<T> implements TokenValidator<T> {
     private final GatewayProperties.SecurityConfig securityConfig;
 
     public ApiKeyTokenValidator(GatewayProperties properties) {
-        this.securityConfig = properties.getSecurity();
+        this.securityConfig = properties.security();
     }
 
     @Override

@@ -29,7 +29,7 @@ public class ApiKeyAuthenticationProvider<T> implements AuthenticationProvider<T
     private final GatewayProperties.SecurityConfig securityConfig;
 
     public ApiKeyAuthenticationProvider(GatewayProperties properties) {
-        this.securityConfig = properties.getSecurity();
+        this.securityConfig = properties.security();
     }
 
     @Override

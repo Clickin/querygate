@@ -1,276 +1,86 @@
 package querygate.config;
 
 import io.micronaut.context.annotation.ConfigurationProperties;
-import io.micronaut.core.annotation.Nullable;
+import io.micronaut.core.bind.annotation.Bindable;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 
+import java.util.List;
+
 /**
- * Configuration properties for the SQL Gateway.
+ * Immutable configuration properties for the SQL Gateway.
  * Maps to the 'gateway' prefix in application.yml.
  */
 @ConfigurationProperties("gateway")
-public class GatewayProperties {
+public record GatewayProperties(
+        @NotBlank @Bindable(defaultValue = "./config/endpoint-config.yml") String endpointConfigPath,
+        MyBatisConfig mybatis,
+        HotReloadConfig hotReload,
+        SqlLoggingConfig sqlLogging,
+        VirtualThreadConfig virtualThreads,
+        SecurityConfig security
+) {
 
-    private MyBatisConfig mybatis = new MyBatisConfig();
-    private HotReloadConfig hotReload = new HotReloadConfig();
-    private SqlLoggingConfig sqlLogging = new SqlLoggingConfig();
-    private VirtualThreadConfig virtualThreads = new VirtualThreadConfig();
-    private SecurityConfig security = new SecurityConfig();
-
-    @NotBlank
-    private String endpointConfigPath = "./config/endpoint-config.yml";
-
-    // Main getters and setters
-
-    public MyBatisConfig getMybatis() {
-        return mybatis;
+    public GatewayProperties {
+        endpointConfigPath = defaultIfBlank(endpointConfigPath, "./config/endpoint-config.yml");
+        mybatis = mybatis != null ? mybatis : new MyBatisConfig("./config/mappers", false, false, 30);
+        hotReload = hotReload != null ? hotReload : new HotReloadConfig(true, 5000);
+        sqlLogging = sqlLogging != null ? sqlLogging : new SqlLoggingConfig(true, true, true, 1000);
+        virtualThreads = virtualThreads != null ? virtualThreads : new VirtualThreadConfig(true, "gateway-virtual-executor");
+        security = security != null ? security : new SecurityConfig(true, "X-API-Key", List.of());
     }
 
-    public void setMybatis(MyBatisConfig mybatis) {
-        this.mybatis = mybatis;
-    }
-
-    public HotReloadConfig getHotReload() {
-        return hotReload;
-    }
-
-    public void setHotReload(HotReloadConfig hotReload) {
-        this.hotReload = hotReload;
-    }
-
-    public SqlLoggingConfig getSqlLogging() {
-        return sqlLogging;
-    }
-
-    public void setSqlLogging(SqlLoggingConfig sqlLogging) {
-        this.sqlLogging = sqlLogging;
-    }
-
-    public VirtualThreadConfig getVirtualThreads() {
-        return virtualThreads;
-    }
-
-    public void setVirtualThreads(VirtualThreadConfig virtualThreads) {
-        this.virtualThreads = virtualThreads;
-    }
-
-    public String getEndpointConfigPath() {
-        return endpointConfigPath;
-    }
-
-    public void setEndpointConfigPath(String endpointConfigPath) {
-        this.endpointConfigPath = endpointConfigPath;
-    }
-
-    public SecurityConfig getSecurity() {
-        return security;
-    }
-
-    public void setSecurity(SecurityConfig security) {
-        this.security = security;
-    }
-
-    /**
-     * MyBatis configuration properties.
-     */
     @ConfigurationProperties("mybatis")
-    public static class MyBatisConfig {
-
-        @NotBlank
-        private String mapperLocations = "./config/mappers";
-
-        private boolean cacheEnabled = false;
-
-        private boolean lazyLoadingEnabled = false;
-
-        @Positive
-        private int defaultStatementTimeout = 30;
-
-        public String getMapperLocations() {
-            return mapperLocations;
-        }
-
-        public void setMapperLocations(String mapperLocations) {
-            this.mapperLocations = mapperLocations;
-        }
-
-        public boolean isCacheEnabled() {
-            return cacheEnabled;
-        }
-
-        public void setCacheEnabled(boolean cacheEnabled) {
-            this.cacheEnabled = cacheEnabled;
-        }
-
-        public boolean isLazyLoadingEnabled() {
-            return lazyLoadingEnabled;
-        }
-
-        public void setLazyLoadingEnabled(boolean lazyLoadingEnabled) {
-            this.lazyLoadingEnabled = lazyLoadingEnabled;
-        }
-
-        public int getDefaultStatementTimeout() {
-            return defaultStatementTimeout;
-        }
-
-        public void setDefaultStatementTimeout(int defaultStatementTimeout) {
-            this.defaultStatementTimeout = defaultStatementTimeout;
+    public record MyBatisConfig(
+            @NotBlank @Bindable(defaultValue = "./config/mappers") String mapperLocations,
+            @Bindable(defaultValue = "false") boolean cacheEnabled,
+            @Bindable(defaultValue = "false") boolean lazyLoadingEnabled,
+            @Positive @Bindable(defaultValue = "30") int defaultStatementTimeout
+    ) {
+        public MyBatisConfig {
+            mapperLocations = defaultIfBlank(mapperLocations, "./config/mappers");
         }
     }
 
-    /**
-     * Hot reload configuration properties.
-     */
     @ConfigurationProperties("hot-reload")
-    public static class HotReloadConfig {
-
-        private boolean enabled = true;
-
-        @Positive
-        private long pollIntervalMs = 5000;
-
-        public boolean isEnabled() {
-            return enabled;
-        }
-
-        public void setEnabled(boolean enabled) {
-            this.enabled = enabled;
-        }
-
-        public long getPollIntervalMs() {
-            return pollIntervalMs;
-        }
-
-        public void setPollIntervalMs(long pollIntervalMs) {
-            this.pollIntervalMs = pollIntervalMs;
-        }
+    public record HotReloadConfig(
+            @Bindable(defaultValue = "true") boolean enabled,
+            @Positive @Bindable(defaultValue = "5000") long pollIntervalMs
+    ) {
     }
 
-    /**
-     * SQL logging configuration properties.
-     */
     @ConfigurationProperties("sql-logging")
-    public static class SqlLoggingConfig {
-
-        private boolean enabled = true;
-
-        private boolean logParameters = true;
-
-        private boolean logTiming = true;
-
-        @Positive
-        private long slowQueryThresholdMs = 1000;
-
-        public boolean isEnabled() {
-            return enabled;
-        }
-
-        public void setEnabled(boolean enabled) {
-            this.enabled = enabled;
-        }
-
-        public boolean isLogParameters() {
-            return logParameters;
-        }
-
-        public void setLogParameters(boolean logParameters) {
-            this.logParameters = logParameters;
-        }
-
-        public boolean isLogTiming() {
-            return logTiming;
-        }
-
-        public void setLogTiming(boolean logTiming) {
-            this.logTiming = logTiming;
-        }
-
-        public long getSlowQueryThresholdMs() {
-            return slowQueryThresholdMs;
-        }
-
-        public void setSlowQueryThresholdMs(long slowQueryThresholdMs) {
-            this.slowQueryThresholdMs = slowQueryThresholdMs;
-        }
+    public record SqlLoggingConfig(
+            @Bindable(defaultValue = "true") boolean enabled,
+            @Bindable(defaultValue = "true") boolean logParameters,
+            @Bindable(defaultValue = "true") boolean logTiming,
+            @Positive @Bindable(defaultValue = "1000") long slowQueryThresholdMs
+    ) {
     }
 
-    /**
-     * Virtual thread executor configuration properties.
-     */
     @ConfigurationProperties("virtual-threads")
-    public static class VirtualThreadConfig {
-
-        private boolean enabled = true;
-
-        private String executorName = "gateway-virtual-executor";
-
-        public boolean isEnabled() {
-            return enabled;
-        }
-
-        public void setEnabled(boolean enabled) {
-            this.enabled = enabled;
-        }
-
-        public String getExecutorName() {
-            return executorName;
-        }
-
-        public void setExecutorName(String executorName) {
-            this.executorName = executorName;
+    public record VirtualThreadConfig(
+            @Bindable(defaultValue = "true") boolean enabled,
+            @Bindable(defaultValue = "gateway-virtual-executor") String executorName
+    ) {
+        public VirtualThreadConfig {
+            executorName = defaultIfBlank(executorName, "gateway-virtual-executor");
         }
     }
 
-    /**
-     * Security configuration properties.
-     */
     @ConfigurationProperties("security")
-    public static class SecurityConfig {
-
-        private boolean enabled = true;
-
-        private String apiKeyHeader = "X-API-Key";
-
-        private java.util.List<String> apiKeys = java.util.List.of();
-
-        private java.util.List<String> allowedNetworks = java.util.List.of("127.0.0.1", "::1");
-
-        public boolean isEnabled() {
-            return enabled;
-        }
-
-        public void setEnabled(boolean enabled) {
-            this.enabled = enabled;
-        }
-
-        public String getApiKeyHeader() {
-            return apiKeyHeader;
-        }
-
-        public void setApiKeyHeader(String apiKeyHeader) {
-            this.apiKeyHeader = apiKeyHeader;
-        }
-
-        public java.util.List<String> getApiKeys() {
-            return apiKeys;
-        }
-
-        public void setApiKeys(java.util.List<String> apiKeys) {
-            this.apiKeys = apiKeys;
-        }
-
-        public java.util.List<String> getAllowedNetworks() {
-            return allowedNetworks;
-        }
-
-        public void setAllowedNetworks(java.util.List<String> allowedNetworks) {
-            this.allowedNetworks = allowedNetworks;
+    public record SecurityConfig(
+            @Bindable(defaultValue = "true") boolean enabled,
+            @Bindable(defaultValue = "X-API-Key") String apiKeyHeader,
+            List<String> apiKeys
+    ) {
+        public SecurityConfig {
+            apiKeyHeader = defaultIfBlank(apiKeyHeader, "X-API-Key");
+            apiKeys = apiKeys == null ? List.of() : List.copyOf(apiKeys);
         }
     }
 
-    /**
-     * Backpressure configuration properties.
-     */
+    private static String defaultIfBlank(String value, String defaultValue) {
+        return (value == null || value.isBlank()) ? defaultValue : value;
+    }
 }
