@@ -4,7 +4,6 @@ import querygate.config.EndpointConfig;
 import querygate.config.MyBatisFactory;
 import querygate.exception.SqlExecutionException;
 import querygate.model.SqlExecutionResult;
-import querygate.model.SqlType;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import jakarta.inject.Singleton;

@@ -74,7 +74,7 @@ gateway:
   security:
     enabled: ${GATEWAY_SECURITY_ENABLED:true}
     api-key-header: Authorization
-    api-keys: ${GATEWAY_API_KEYS:key}
+    api-keys: ${GATEWAY_API_KEYS:}
 
 # Logging configuration
 logger:

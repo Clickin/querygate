@@ -49,10 +49,8 @@ class ApiKeyTokenValidatorTest {
         AtomicReference<Throwable> error = new AtomicReference<>();
 
         publisher.subscribe(new Subscriber<>() {
-            Subscription subscription;
             @Override
             public void onSubscribe(Subscription s) {
-                this.subscription = s;
                 s.request(1);
             }
 

@@ -61,7 +61,7 @@ public class VirtualThreadExecutorFactory {
                 new java.util.concurrent.LinkedBlockingQueue<>(maxThreads * 2), // bounded queue
                 r -> {
                     Thread t = new Thread(r);
-                    t.setName("gateway-platform-" + t.getId());
+                    t.setName("gateway-platform-" + t.threadId());
                     t.setDaemon(true);
                     return t;
                 },
