@@ -36,7 +36,8 @@ public class MyBatisFactory {
     private final DataSource dataSource;
     private final SqlLoggingInterceptor sqlLoggingInterceptor;
 
-    // AtomicReference for hot-reload support - allows swapping the factory without restart
+    // AtomicReference for hot-reload support - allows swapping the factory without
+    // restart
     private final AtomicReference<SqlSessionFactory> sessionFactoryRef = new AtomicReference<>();
 
     public MyBatisFactory(
@@ -78,7 +79,6 @@ public class MyBatisFactory {
         configuration.setDefaultStatementTimeout(mybatisConfig.defaultStatementTimeout());
 
         // Additional MyBatis settings for Map-based results
-        configuration.setMapUnderscoreToCamelCase(true);
         configuration.setCallSettersOnNulls(true);
         configuration.setReturnInstanceForEmptyRow(true);
 
@@ -146,8 +146,7 @@ public class MyBatisFactory {
                     is,
                     configuration,
                     resourcePath,
-                    configuration.getSqlFragments()
-            );
+                    configuration.getSqlFragments());
             mapperBuilder.parse();
             LOG.debug("Successfully loaded mapper: {}", mapperFile.getFileName());
         } catch (IOException e) {
