@@ -9,3 +9,48 @@ endpoints:
     validation:
       required: []
       optional: []
+
+  - path: /api/users
+    method: GET
+    sql-id: UserMapper.findAll
+    sql-type: SELECT
+    description: "Get all users"
+    validation:
+      required: []
+      optional: []
+
+  - path: /api/users/{id}
+    method: GET
+    sql-id: UserMapper.findById
+    sql-type: SELECT
+    description: "Get user by ID"
+    validation:
+      required: [id]
+      optional: []
+
+  - path: /api/users
+    method: POST
+    sql-id: UserMapper.insertUser
+    sql-type: INSERT
+    description: "Create new user"
+    validation:
+      required: [id, name, email]
+      optional: []
+
+  - path: /api/users/{id}
+    method: PUT
+    sql-id: UserMapper.updateUser
+    sql-type: UPDATE
+    description: "Update user"
+    validation:
+      required: [name, email]
+      optional: []
+
+  - path: /api/users/{id}
+    method: DELETE
+    sql-id: UserMapper.deleteUser
+    sql-type: DELETE
+    description: "Delete user"
+    validation:
+      required: []
+      optional: []
