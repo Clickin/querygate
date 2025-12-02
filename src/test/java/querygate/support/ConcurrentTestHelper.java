@@ -86,8 +86,8 @@ public class ConcurrentTestHelper {
             for (Future<HttpResponse<T>> future : futures) {
                 try {
                     results.add(future.get(10, TimeUnit.SECONDS));
-                } catch (TimeoutException e) {
-                    throw new RuntimeException("Request timed out", e);
+                } catch (TimeoutException | InterruptedException | ExecutionException e) {
+                    throw new RuntimeException("Request failed", e);
                 }
             }
 
@@ -191,7 +191,7 @@ public class ConcurrentTestHelper {
             for (Future<?> future : futures) {
                 try {
                     future.get(15, TimeUnit.SECONDS);
-                } catch (TimeoutException e) {
+                } catch (TimeoutException | InterruptedException | ExecutionException e) {
                     throw new RuntimeException("Workload operation timed out", e);
                 }
             }
