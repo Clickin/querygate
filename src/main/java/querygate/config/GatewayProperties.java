@@ -71,11 +71,11 @@ public record GatewayProperties(
     @ConfigurationProperties("security")
     public record SecurityConfig(
             @Bindable(defaultValue = "true") boolean enabled,
-            @Bindable(defaultValue = "X-API-Key") String apiKeyHeader,
+            @Bindable(defaultValue = "Authorization") String apiKeyHeader,
             List<String> apiKeys
     ) {
         public SecurityConfig {
-            apiKeyHeader = defaultIfBlank(apiKeyHeader, "X-API-Key");
+            apiKeyHeader = defaultIfBlank(apiKeyHeader, "Authorization");
             apiKeys = apiKeys == null ? List.of() : List.copyOf(apiKeys);
         }
     }

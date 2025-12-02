@@ -27,8 +27,26 @@ public class ApiKeyTokenReader implements TokenReader<HttpRequest<?>> {
 
     @Override
     public Optional<String> findToken(HttpRequest<?> request) {
-        Optional<String> token = request.getHeaders().getFirst(apiKeyHeader);
-        LOG.trace("Looking for API key in header '{}': present={}", apiKeyHeader, token.isPresent());
-        return token;
+        Optional<String> rawHeader = request.getHeaders().getFirst(apiKeyHeader);
+        LOG.trace("Looking for API key in header '{}': present={}", apiKeyHeader, rawHeader.isPresent());
+
+        if (rawHeader.isEmpty()) {
+            return Optional.empty();
+        }
+
+        String value = rawHeader.get().trim();
+
+        if ("Authorization".equalsIgnoreCase(apiKeyHeader)) {
+            // Expect format: "Key <token>" to avoid confusion with Bearer/JWT
+            String prefix = "Key ";
+            if (!value.regionMatches(true, 0, prefix, 0, prefix.length())) {
+                LOG.debug("Authorization header present but missing Key scheme");
+                return Optional.empty();
+            }
+            String token = value.substring(prefix.length()).trim();
+            return token.isEmpty() ? Optional.empty() : Optional.of(token);
+        }
+
+        return value.isEmpty() ? Optional.empty() : Optional.of(value);
     }
 }

@@ -37,7 +37,7 @@ public class ApiKeyTokenValidator<T> implements TokenValidator<T> {
             return this::completeWithoutAuthentication;
         }
 
-        if (securityConfig.getApiKeys().contains(token)) {
+        if (securityConfig.apiKeys().contains(token)) {
             LOG.debug("API key validated successfully");
             Authentication auth = Authentication.build(
                     "api-client",

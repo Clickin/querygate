@@ -25,7 +25,7 @@ class MetricsAccessTest {
         HttpResponse<String> response =
                 client.toBlocking().exchange(HttpRequest.GET("/prometheus"), String.class);
 
-        Assertions.assertThat(response.getStatus()).isEqualTo(HttpStatus.OK);
+        Assertions.assertThat(response.getStatus().getCode()).isEqualTo(HttpStatus.OK.getCode());
         Assertions.assertThat(response.getBody()).isPresent();
     }
 
@@ -34,7 +34,7 @@ class MetricsAccessTest {
         HttpResponse<String> response =
                 client.toBlocking().exchange(HttpRequest.GET("/metrics"), String.class);
 
-        Assertions.assertThat(response.getStatus()).isEqualTo(HttpStatus.OK);
+        Assertions.assertThat(response.getStatus().getCode()).isEqualTo(HttpStatus.OK.getCode());
         Assertions.assertThat(response.getBody()).isPresent();
     }
 }

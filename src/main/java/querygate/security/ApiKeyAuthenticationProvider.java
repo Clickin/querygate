@@ -41,7 +41,7 @@ public class ApiKeyAuthenticationProvider<T> implements AuthenticationProvider<T
             return subscriber -> emit(subscriber, AuthenticationResponse.failure("API key required"));
         }
 
-        if (securityConfig.getApiKeys().contains(apiKey)) {
+        if (securityConfig.apiKeys().contains(apiKey)) {
             LOG.debug("API key validated successfully");
             AuthenticationResponse response = AuthenticationResponse.success(
                     "api-client",

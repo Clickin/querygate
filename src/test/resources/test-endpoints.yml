@@ -1,0 +1,11 @@
+version: "1.0"
+
+endpoints:
+  - path: /api/ping
+    method: GET
+    sql-id: HealthMapper.ping
+    sql-type: SELECT
+    description: "Ping endpoint used for testing API key security"
+    validation:
+      required: []
+      optional: []

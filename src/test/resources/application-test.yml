@@ -1,0 +1,10 @@
+micronaut:
+  server:
+    port: -1
+
+gateway:
+  endpoint-config-path: src/test/resources/test-endpoints.yml
+  security:
+    api-key-header: Authorization
+    api-keys:
+      - secret-key
