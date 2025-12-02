@@ -1,0 +1,53 @@
+micronaut:
+  application:
+    name: querygate
+    version: 1.0
+
+  server:
+    port: 8080
+    thread-selection: AUTO
+
+  http:
+    client:
+      read-timeout: 30s
+
+datasources:
+  default:
+    url: jdbc:h2:mem:devdb;MODE=MySQL
+    driverClassName: org.h2.Driver
+    username: sa
+    password: ""
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+
+jpa:
+  default:
+    properties:
+      hibernate:
+        hbm2ddl:
+          auto: none
+
+gateway:
+  virtual-threads:
+    enabled: false
+    executor-name: gateway-virtual-executor
+
+  mybatis:
+    cache-enabled: false
+    lazy-loading-enabled: false
+    default-statement-timeout: 30
+    mapper-locations: mappers/
+
+  sql-logging:
+    enabled: true
+
+  security:
+    enabled: ${GATEWAY_SECURITY_ENABLED:true}
+    api-key-header: Authorization
+    api-keys: ${GATEWAY_API_KEYS:key}
+
+logger:
+  levels:
+    querygate: DEBUG
+    io.micronaut: WARN
