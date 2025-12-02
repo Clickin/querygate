@@ -1,5 +1,5 @@
 applicationType: default
-defaultPackage: generic.db.gateway
+defaultPackage: querygate 
 testFramework: junit
 sourceLanguage: java
 buildTool: gradle

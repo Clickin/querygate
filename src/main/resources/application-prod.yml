@@ -26,18 +26,11 @@ gateway:
   security:
     enabled: true
 
-  # Tighter backpressure in production
-  backpressure:
-    enabled: true
-    max-concurrent-requests: 50
-    request-timeout-ms: 15000
-    statement-timeout-seconds: 15
-
 # Production logging - no DEBUG in production
 logger:
   levels:
-    generic.db.gateway: INFO
-    generic.db.gateway.interceptor: WARN
+    querygate: INFO
+    querygate.interceptor: WARN
     SQL_LOGGER: WARN
     org.apache.ibatis: WARN
     com.zaxxer.hikari: WARN

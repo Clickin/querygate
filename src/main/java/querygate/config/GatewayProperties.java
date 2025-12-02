@@ -17,7 +17,6 @@ public class GatewayProperties {
     private SqlLoggingConfig sqlLogging = new SqlLoggingConfig();
     private VirtualThreadConfig virtualThreads = new VirtualThreadConfig();
     private SecurityConfig security = new SecurityConfig();
-    private BackpressureConfig backpressure = new BackpressureConfig();
 
     @NotBlank
     private String endpointConfigPath = "./config/endpoint-config.yml";
@@ -70,14 +69,6 @@ public class GatewayProperties {
 
     public void setSecurity(SecurityConfig security) {
         this.security = security;
-    }
-
-    public BackpressureConfig getBackpressure() {
-        return backpressure;
-    }
-
-    public void setBackpressure(BackpressureConfig backpressure) {
-        this.backpressure = backpressure;
     }
 
     /**
@@ -282,50 +273,4 @@ public class GatewayProperties {
     /**
      * Backpressure configuration properties.
      */
-    @ConfigurationProperties("backpressure")
-    public static class BackpressureConfig {
-
-        private boolean enabled = true;
-
-        @Positive
-        private int maxConcurrentRequests = 100;
-
-        @Positive
-        private long requestTimeoutMs = 30000;
-
-        @Positive
-        private long statementTimeoutSeconds = 30;
-
-        public boolean isEnabled() {
-            return enabled;
-        }
-
-        public void setEnabled(boolean enabled) {
-            this.enabled = enabled;
-        }
-
-        public int getMaxConcurrentRequests() {
-            return maxConcurrentRequests;
-        }
-
-        public void setMaxConcurrentRequests(int maxConcurrentRequests) {
-            this.maxConcurrentRequests = maxConcurrentRequests;
-        }
-
-        public long getRequestTimeoutMs() {
-            return requestTimeoutMs;
-        }
-
-        public void setRequestTimeoutMs(long requestTimeoutMs) {
-            this.requestTimeoutMs = requestTimeoutMs;
-        }
-
-        public long getStatementTimeoutSeconds() {
-            return statementTimeoutSeconds;
-        }
-
-        public void setStatementTimeoutSeconds(long statementTimeoutSeconds) {
-            this.statementTimeoutSeconds = statementTimeoutSeconds;
-        }
-    }
 }

@@ -22,13 +22,13 @@ import io.micronaut.http.annotation.PathVariable;
 import io.micronaut.http.annotation.Post;
 import io.micronaut.http.annotation.Produces;
 import io.micronaut.http.annotation.Put;
+import io.micronaut.scheduling.annotation.ExecuteOn;
 import io.micronaut.security.annotation.Secured;
 import io.micronaut.security.rules.SecurityRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 
 /**
  * Dynamic routing controller that handles all API endpoints.
@@ -39,6 +39,7 @@ import java.util.concurrent.CompletableFuture;
  */
 @Controller("/api")
 @Secured(SecurityRule.IS_AUTHENTICATED)
+@ExecuteOn("gatewayVirtualExecutor")
 public class DynamicRoutingController {
 
     private static final Logger LOG = LoggerFactory.getLogger(DynamicRoutingController.class);
@@ -67,7 +68,7 @@ public class DynamicRoutingController {
      */
     @Get("/{+path}")
     @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
-    public CompletableFuture<HttpResponse<Map<String, Object>>> handleGet(
+    public HttpResponse<Map<String, Object>> handleGet(
             HttpRequest<?> request,
             @PathVariable String path) {
         return handleRequest(request, "GET", "/api/" + path, null);
@@ -80,7 +81,7 @@ public class DynamicRoutingController {
     @Consumes({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML,
             MediaType.TEXT_XML, MediaType.APPLICATION_FORM_URLENCODED})
     @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
-    public CompletableFuture<HttpResponse<Map<String, Object>>> handlePost(
+    public HttpResponse<Map<String, Object>> handlePost(
             HttpRequest<?> request,
             @PathVariable String path,
             @Body(value = "") String body) {
@@ -93,7 +94,7 @@ public class DynamicRoutingController {
     @Put("/{+path}")
     @Consumes({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
     @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
-    public CompletableFuture<HttpResponse<Map<String, Object>>> handlePut(
+    public HttpResponse<Map<String, Object>> handlePut(
             HttpRequest<?> request,
             @PathVariable String path,
             @Body(value = "") String body) {
@@ -105,7 +106,7 @@ public class DynamicRoutingController {
      */
     @Delete("/{+path}")
     @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
-    public CompletableFuture<HttpResponse<Map<String, Object>>> handleDelete(
+    public HttpResponse<Map<String, Object>> handleDelete(
             HttpRequest<?> request,
             @PathVariable String path,
             @Body(value = "") String body) {
@@ -118,7 +119,7 @@ public class DynamicRoutingController {
     @Patch("/{+path}")
     @Consumes({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
     @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
-    public CompletableFuture<HttpResponse<Map<String, Object>>> handlePatch(
+    public HttpResponse<Map<String, Object>> handlePatch(
             HttpRequest<?> request,
             @PathVariable String path,
             @Body(value = "") String body) {
@@ -128,7 +129,7 @@ public class DynamicRoutingController {
     /**
      * Common request handler for all HTTP methods.
      */
-    private CompletableFuture<HttpResponse<Map<String, Object>>> handleRequest(
+    private HttpResponse<Map<String, Object>> handleRequest(
             HttpRequest<?> request,
             String method,
             String fullPath,
@@ -156,9 +157,9 @@ public class DynamicRoutingController {
         Map<String, Object> validatedParams =
                 validationModule.validateAndTransform(endpointConfig, mergedParams);
 
-        // 5. Execute SQL asynchronously
-        return dynamicSqlService.execute(endpointConfig, validatedParams)
-                .thenApply(result -> buildResponse(request, endpointConfig, result));
+        // 5. Execute SQL
+        SqlExecutionResult result = dynamicSqlService.execute(endpointConfig, validatedParams);
+        return buildResponse(request, endpointConfig, result);
     }
 
     /**

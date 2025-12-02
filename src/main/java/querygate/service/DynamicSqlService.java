@@ -7,7 +7,6 @@ import querygate.model.SqlExecutionResult;
 import querygate.model.SqlType;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
-import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 import org.apache.ibatis.session.ExecutorType;
 import org.apache.ibatis.session.SqlSession;
@@ -15,11 +14,8 @@ import org.apache.ibatis.session.SqlSessionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
 
 /**
  * Service for executing dynamic SQL operations via MyBatis.
@@ -32,66 +28,61 @@ public class DynamicSqlService {
     private static final Logger LOG = LoggerFactory.getLogger(DynamicSqlService.class);
 
     private final MyBatisFactory myBatisFactory;
-    private final ExecutorService virtualExecutor;
     private final MeterRegistry meterRegistry;
 
     public DynamicSqlService(
             MyBatisFactory myBatisFactory,
-            @Named("gatewayVirtualExecutor") ExecutorService virtualExecutor,
             MeterRegistry meterRegistry) {
         this.myBatisFactory = myBatisFactory;
-        this.virtualExecutor = virtualExecutor;
         this.meterRegistry = meterRegistry;
     }
 
     /**
-     * Executes SQL based on endpoint configuration asynchronously.
+     * Executes SQL based on endpoint configuration on the configured executor.
      *
      * @param endpointConfig The endpoint configuration
      * @param parameters     The merged and validated parameters
-     * @return CompletableFuture with the execution result
+     * @return Execution result
      */
-    public CompletableFuture<SqlExecutionResult> execute(
+    public SqlExecutionResult execute(
             EndpointConfig endpointConfig,
             Map<String, Object> parameters) {
 
-        return CompletableFuture.supplyAsync(() -> {
-            Timer.Sample sample = Timer.start(meterRegistry);
+        Timer.Sample sample = Timer.start(meterRegistry);
 
-            try {
-                SqlExecutionResult result = switch (endpointConfig.sqlType()) {
-                    case SELECT -> executeSelect(endpointConfig.sqlId(), parameters);
-                    case INSERT -> executeInsert(endpointConfig.sqlId(), parameters);
-                    case UPDATE -> executeUpdate(endpointConfig.sqlId(), parameters);
-                    case DELETE -> executeDelete(endpointConfig.sqlId(), parameters);
-                    case BATCH -> executeBatch(endpointConfig, parameters);
-                };
+        try {
+            SqlExecutionResult result = switch (endpointConfig.sqlType()) {
+                case SELECT -> executeSelect(endpointConfig.sqlId(), parameters);
+                case INSERT -> executeInsert(endpointConfig.sqlId(), parameters);
+                case UPDATE -> executeUpdate(endpointConfig.sqlId(), parameters);
+                case DELETE -> executeDelete(endpointConfig.sqlId(), parameters);
+                case BATCH -> executeBatch(endpointConfig, parameters);
+            };
 
-                sample.stop(Timer.builder("gateway.sql.execution")
-                        .tag("sqlType", endpointConfig.sqlType().name())
-                        .tag("sqlId", endpointConfig.sqlId())
-                        .tag("status", "success")
-                        .register(meterRegistry));
+            sample.stop(Timer.builder("gateway.sql.execution")
+                    .tag("sqlType", endpointConfig.sqlType().name())
+                    .tag("sqlId", endpointConfig.sqlId())
+                    .tag("status", "success")
+                    .register(meterRegistry));
 
-                return result;
+            return result;
 
-            } catch (Exception e) {
-                sample.stop(Timer.builder("gateway.sql.execution")
-                        .tag("sqlType", endpointConfig.sqlType().name())
-                        .tag("sqlId", endpointConfig.sqlId())
-                        .tag("status", "error")
-                        .register(meterRegistry));
+        } catch (Exception e) {
+            sample.stop(Timer.builder("gateway.sql.execution")
+                    .tag("sqlType", endpointConfig.sqlType().name())
+                    .tag("sqlId", endpointConfig.sqlId())
+                    .tag("status", "error")
+                    .register(meterRegistry));
 
-                LOG.error("SQL execution failed: {} - {}", endpointConfig.sqlId(), e.getMessage(), e);
-                // Throw exception to be handled by GlobalExceptionHandler
-                // Do NOT expose raw SQL errors to clients
-                throw new SqlExecutionException(
-                        endpointConfig.sqlId(),
-                        "SQL execution failed",
-                        e
-                );
-            }
-        }, virtualExecutor);
+            LOG.error("SQL execution failed: {} - {}", endpointConfig.sqlId(), e.getMessage(), e);
+            // Throw exception to be handled by GlobalExceptionHandler
+            // Do NOT expose raw SQL errors to clients
+            throw new SqlExecutionException(
+                    endpointConfig.sqlId(),
+                    "SQL execution failed",
+                    e
+            );
+        }
     }
 
     /**

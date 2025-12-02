@@ -8,9 +8,10 @@ import io.micronaut.security.authentication.AuthenticationRequest;
 import io.micronaut.security.authentication.AuthenticationResponse;
 import jakarta.inject.Singleton;
 import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.Map;
@@ -37,19 +38,40 @@ public class ApiKeyAuthenticationProvider<T> implements AuthenticationProvider<T
 
         if (apiKey == null || apiKey.isBlank()) {
             LOG.debug("No API key provided");
-            return Mono.just(AuthenticationResponse.failure("API key required"));
+            return subscriber -> emit(subscriber, AuthenticationResponse.failure("API key required"));
         }
 
         if (securityConfig.getApiKeys().contains(apiKey)) {
             LOG.debug("API key validated successfully");
-            return Mono.just(AuthenticationResponse.success(
+            AuthenticationResponse response = AuthenticationResponse.success(
                     "api-client",
                     List.of("ROLE_API"),
                     Map.of("keyHash", String.valueOf(apiKey.hashCode()))
-            ));
+            );
+            return subscriber -> emit(subscriber, response);
         }
 
         LOG.warn("Invalid API key attempt");
-        return Mono.just(AuthenticationResponse.failure("Invalid API key"));
+        return subscriber -> emit(subscriber, AuthenticationResponse.failure("Invalid API key"));
+    }
+
+    private void emit(Subscriber<? super AuthenticationResponse> subscriber, AuthenticationResponse response) {
+        subscriber.onSubscribe(new Subscription() {
+            private boolean done;
+            @Override
+            public void request(long n) {
+                if (done || n <= 0) {
+                    return;
+                }
+                done = true;
+                subscriber.onNext(response);
+                subscriber.onComplete();
+            }
+
+            @Override
+            public void cancel() {
+                done = true;
+            }
+        });
     }
 }

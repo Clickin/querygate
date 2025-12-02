@@ -19,10 +19,10 @@ micronaut:
           - isAnonymous()
       - pattern: /prometheus
         access:
-          - ROLE_ADMIN
+          - isAnonymous()
       - pattern: /metrics/**
         access:
-          - ROLE_ADMIN
+          - isAnonymous()
     token:
       enabled: true
 
@@ -78,13 +78,6 @@ gateway:
     allowed-networks:
       - 127.0.0.1
       - "::1"
-
-  # Backpressure configuration
-  backpressure:
-    enabled: true
-    max-concurrent-requests: ${GATEWAY_MAX_CONCURRENT:100}
-    request-timeout-ms: 30000
-    statement-timeout-seconds: 30
 
 # Logging configuration
 logger:

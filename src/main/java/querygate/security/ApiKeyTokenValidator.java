@@ -7,9 +7,10 @@ import io.micronaut.security.authentication.Authentication;
 import io.micronaut.security.token.validator.TokenValidator;
 import jakarta.inject.Singleton;
 import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.Map;
@@ -33,19 +34,59 @@ public class ApiKeyTokenValidator<T> implements TokenValidator<T> {
     public Publisher<Authentication> validateToken(String token, T request) {
         if (token == null || token.isBlank()) {
             LOG.debug("Empty API key provided");
-            return Mono.empty();
+            return this::completeWithoutAuthentication;
         }
 
         if (securityConfig.getApiKeys().contains(token)) {
             LOG.debug("API key validated successfully");
-            return Mono.just(Authentication.build(
+            Authentication auth = Authentication.build(
                     "api-client",
                     List.of("ROLE_API"),
                     Map.of("keyHash", String.valueOf(token.hashCode()))
-            ));
+            );
+            return subscriber -> emitAuthentication(subscriber, auth);
         }
 
         LOG.warn("Invalid API key attempt");
-        return Mono.empty();
+        return this::completeWithoutAuthentication;
+    }
+
+    private void emitAuthentication(Subscriber<? super Authentication> subscriber, Authentication authentication) {
+        subscriber.onSubscribe(new Subscription() {
+            private boolean done;
+            @Override
+            public void request(long n) {
+                if (done || n <= 0) {
+                    return;
+                }
+                done = true;
+                subscriber.onNext(authentication);
+                subscriber.onComplete();
+            }
+
+            @Override
+            public void cancel() {
+                done = true;
+            }
+        });
+    }
+
+    private void completeWithoutAuthentication(Subscriber<? super Authentication> subscriber) {
+        subscriber.onSubscribe(new Subscription() {
+            private boolean done;
+            @Override
+            public void request(long n) {
+                if (done) {
+                    return;
+                }
+                done = true;
+                subscriber.onComplete();
+            }
+
+            @Override
+            public void cancel() {
+                done = true;
+            }
+        });
     }
 }

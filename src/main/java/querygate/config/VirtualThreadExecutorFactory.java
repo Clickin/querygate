@@ -51,7 +51,7 @@ public class VirtualThreadExecutorFactory {
     @Named("gatewayVirtualExecutor")
     @Requires(property = "gateway.virtual-threads.enabled", value = "false")
     public ExecutorService platformThreadExecutor(GatewayProperties properties) {
-        int maxThreads = properties.getBackpressure().getMaxConcurrentRequests();
+        int maxThreads = Math.max(16, Runtime.getRuntime().availableProcessors() * 2);
         LOG.info("Creating bounded platform thread executor (max={})", maxThreads);
 
         java.util.concurrent.ThreadPoolExecutor executor = new java.util.concurrent.ThreadPoolExecutor(
