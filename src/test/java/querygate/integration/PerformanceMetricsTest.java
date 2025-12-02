@@ -12,7 +12,6 @@ import querygate.support.ConcurrentTestHelper;
 import querygate.support.PerformanceTracker;
 import querygate.support.ThreadInspectionUtils;
 
-import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.inject.Inject;
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -35,9 +34,6 @@ class PerformanceMetricsTest {
 
     @Inject
     DataSource dataSource;
-
-    @Inject(required = false)
-    MeterRegistry meterRegistry;
 
     private static final String API_KEY = "secret-key";
     private final PerformanceTracker performanceTracker = new PerformanceTracker();
