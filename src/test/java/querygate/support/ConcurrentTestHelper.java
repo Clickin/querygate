@@ -1,7 +1,7 @@
 package querygate.support;
 
 import io.micronaut.http.HttpResponse;
-import io.micronaut.http.client.BlockingHttpClient;
+import io.micronaut.http.client.HttpClient;
 
 import java.util.*;
 import java.util.concurrent.*;
@@ -13,10 +13,10 @@ import java.util.function.Supplier;
  */
 public class ConcurrentTestHelper {
 
-    private final BlockingHttpClient httpClient;
+    private final HttpClient httpClient;
     private final PerformanceTracker performanceTracker;
 
-    public ConcurrentTestHelper(BlockingHttpClient httpClient, PerformanceTracker performanceTracker) {
+    public ConcurrentTestHelper(HttpClient httpClient, PerformanceTracker performanceTracker) {
         this.httpClient = httpClient;
         this.performanceTracker = performanceTracker;
     }
