@@ -1,8 +1,10 @@
 package querygate.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micronaut.http.HttpRequest;
 import io.micronaut.http.MediaType;
+import io.micronaut.serde.ObjectMapper;
+import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
+import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -14,13 +16,11 @@ import static org.assertj.core.api.Assertions.*;
  * Unit tests for ResponseSerializer.
  * Tests content negotiation and serialization to JSON and XML.
  */
+@MicronautTest
 class ResponseSerializerTest {
 
-    private final ResponseSerializer responseSerializer;
-
-    ResponseSerializerTest() {
-        this.responseSerializer = new ResponseSerializer(new ObjectMapper());
-    }
+    @Inject
+    ResponseSerializer responseSerializer;
 
     @Test
     void testWhenNoAcceptHeaderThenDefaultsToJson() {
