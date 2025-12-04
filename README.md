@@ -486,19 +486,79 @@ Changes are detected and reloaded automatically without restart.
 
 ## Error Handling
 
-The gateway provides structured error responses:
+The gateway provides structured error responses with configurable detail levels.
 
+### Error Response Configuration
+
+Control error detail exposure via `application.yml`:
+
+```yaml
+gateway:
+  error-handling:
+    # Expose detailed error messages (default: true in dev, false in prod)
+    expose-details: true
+    # Include stack traces in responses (default: false)
+    expose-stack-trace: false
+```
+
+**Security Note:** In production, set `expose-details: false` to prevent exposing:
+- Internal SQL query details
+- MyBatis mapper names and SQL IDs
+- Detailed validation error messages
+- System implementation details
+
+### Error Response Examples
+
+**Development Mode (expose-details: true):**
 ```json
 {
   "success": false,
-  "error": "Validation failed",
+  "error": "Request Body Parse Error",
+  "message": "Invalid JSON format: Unexpected token at position 5",
+  "contentType": "application/json",
+  "path": "/api/users",
+  "method": "POST"
+}
+```
+
+**Production Mode (expose-details: false):**
+```json
+{
+  "success": false,
+  "error": "Request Body Parse Error",
+  "message": "Invalid request format",
+  "path": "/api/users",
+  "method": "POST"
+}
+```
+
+**Validation Error (with details):**
+```json
+{
+  "success": false,
+  "error": "Validation Error",
+  "message": "Validation failed",
   "details": [
     "Required parameter 'username' is missing",
     "Parameter 'age' must be at least 18"
   ],
-  "timestamp": "2025-12-04T14:30:00Z"
+  "path": "/api/users",
+  "method": "POST"
 }
 ```
+
+**Database Error (production mode):**
+```json
+{
+  "success": false,
+  "error": "Database Error",
+  "message": "A database error occurred",
+  "path": "/api/users",
+  "method": "GET"
+}
+```
+
+All errors are always logged server-side with full details for debugging.
 
 ## Security
 

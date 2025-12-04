@@ -26,6 +26,11 @@ gateway:
   security:
     enabled: true
 
+  # Error handling - hide details in production
+  error-handling:
+    expose-details: false
+    expose-stack-trace: false
+
 # Production logging - no DEBUG in production
 logger:
   levels:

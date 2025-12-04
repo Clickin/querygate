@@ -80,6 +80,13 @@ gateway:
     api-key-header: Authorization
     api-keys: ${GATEWAY_API_KEYS:}
 
+  # Error handling configuration
+  error-handling:
+    # Expose detailed error messages (recommended: false in production)
+    expose-details: ${GATEWAY_ERROR_EXPOSE_DETAILS:true}
+    # Include stack traces in error responses (recommended: false in production)
+    expose-stack-trace: ${GATEWAY_ERROR_EXPOSE_STACK_TRACE:false}
+
 # Logging configuration
 logger:
   levels:
