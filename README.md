@@ -560,6 +560,77 @@ gateway:
 
 All errors are always logged server-side with full details for debugging.
 
+### RAW Response Format Error Handling
+
+**Important:** For endpoints configured with `response-format: raw`, error handling works differently to prevent client-side DTO mapping issues.
+
+**Problem:**
+```yaml
+# Endpoint configuration
+- path: /api/users
+  method: GET
+  sql-type: SELECT
+  response-format: raw  # Client expects: List<User>
+```
+
+If errors returned JSON like `{"success": false, "error": "..."}`, client DTO mapping would fail since it expects `List<User>`.
+
+**Solution:**
+
+For RAW format endpoints, errors are returned via **HTTP headers** with an **empty response body**:
+
+```bash
+# Error response for RAW format endpoint
+HTTP/1.1 400 Bad Request
+X-Error-Type: ValidationError
+X-Error-Message: Request validation failed
+Content-Length: 0
+```
+
+**Error Headers:**
+- `X-Error-Type`: Error category (ValidationError, ParseError, DatabaseError, NotFound, BadRequest, InternalError)
+- `X-Error-Message`: Human-readable error message
+- `X-Error-Details`: Additional error details (when expose-details: true)
+- `X-Error-SqlId`: SQL statement ID (for database errors, when expose-details: true)
+- `X-Error-ContentType`: Request content type (for parse errors, when expose-details: true)
+
+**Client Implementation Example:**
+
+```java
+// Java client example
+HttpResponse<List<User>> response = client.get("/api/users");
+
+if (response.getStatusCode() >= 400) {
+    String errorType = response.getHeaders().get("X-Error-Type");
+    String errorMessage = response.getHeaders().get("X-Error-Message");
+    throw new ApiException(errorType, errorMessage);
+}
+
+List<User> users = response.getBody(); // Safe - only reached on success
+```
+
+```typescript
+// TypeScript client example
+const response = await fetch('/api/users');
+
+if (!response.ok) {
+  const errorType = response.headers.get('X-Error-Type');
+  const errorMessage = response.headers.get('X-Error-Message');
+  throw new Error(`${errorType}: ${errorMessage}`);
+}
+
+const users: User[] = await response.json(); // Safe DTO mapping
+```
+
+**Key Points:**
+- ✅ Always check HTTP status code first (200-299 = success)
+- ✅ For errors (400+), read error info from headers
+- ✅ Response body is empty on errors for RAW format
+- ✅ Prevents DTO mapping exceptions on client side
+- ✅ Works with all typed HTTP clients
+
+**WRAPPED format** (default) continues to use structured JSON error responses as shown above.
+
 ## Security
 
 ### API Key Authentication
