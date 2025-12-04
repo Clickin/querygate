@@ -21,8 +21,10 @@ import org.apache.ibatis.type.TypeHandlerRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.text.SimpleDateFormat;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.List;
 import java.util.Properties;
@@ -42,7 +44,8 @@ public class SqlLoggingInterceptor implements Interceptor {
 
     private static final Logger LOG = LoggerFactory.getLogger(SqlLoggingInterceptor.class);
     private static final Logger SQL_LOG = LoggerFactory.getLogger("SQL_LOGGER");
-    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+            .withZone(ZoneId.systemDefault());
 
     private final GatewayProperties.SqlLoggingConfig config;
     private final MeterRegistry meterRegistry;
@@ -200,9 +203,8 @@ public class SqlLoggingInterceptor implements Interceptor {
             }
             return "'" + str + "'";
         } else if (value instanceof Date) {
-            synchronized (DATE_FORMAT) {
-                return DATE_FORMAT.format((Date) value);
-            }
+            Instant instant = ((Date) value).toInstant();
+            return DATE_FORMAT.format(instant);
         } else if (value instanceof byte[]) {
             return "[binary data " + ((byte[]) value).length + " bytes]";
         } else {
