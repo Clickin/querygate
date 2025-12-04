@@ -8,6 +8,7 @@ import querygate.service.DynamicSqlService;
 import querygate.service.InputMergerService;
 import querygate.service.ResponseSerializer;
 import querygate.validation.ValidationModule;
+import io.micronaut.core.annotation.Nullable;
 import io.micronaut.http.HttpRequest;
 import io.micronaut.http.HttpResponse;
 import io.micronaut.http.HttpStatus;
@@ -28,6 +29,7 @@ import io.micronaut.security.rules.SecurityRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -68,7 +70,7 @@ public class DynamicRoutingController {
      */
     @Get("/{+path}")
     @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
-    public HttpResponse<Map<String, Object>> handleGet(
+    public HttpResponse<?> handleGet(
             HttpRequest<?> request,
             @PathVariable String path) {
         return handleRequest(request, "GET", "/api/" + path, null);
@@ -81,10 +83,10 @@ public class DynamicRoutingController {
     @Consumes({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML,
             MediaType.TEXT_XML, MediaType.APPLICATION_FORM_URLENCODED})
     @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
-    public HttpResponse<Map<String, Object>> handlePost(
+    public HttpResponse<?> handlePost(
             HttpRequest<?> request,
             @PathVariable String path,
-            @Body(value = "") String body) {
+            @Nullable @Body String body) {
         return handleRequest(request, "POST", "/api/" + path, body);
     }
 
@@ -94,10 +96,10 @@ public class DynamicRoutingController {
     @Put("/{+path}")
     @Consumes({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
     @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
-    public HttpResponse<Map<String, Object>> handlePut(
+    public HttpResponse<?> handlePut(
             HttpRequest<?> request,
             @PathVariable String path,
-            @Body(value = "") String body) {
+            @Nullable @Body String body) {
         return handleRequest(request, "PUT", "/api/" + path, body);
     }
 
@@ -106,10 +108,10 @@ public class DynamicRoutingController {
      */
     @Delete("/{+path}")
     @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
-    public HttpResponse<Map<String, Object>> handleDelete(
+    public HttpResponse<?> handleDelete(
             HttpRequest<?> request,
             @PathVariable String path,
-            @Body(value = "") String body) {
+            @Nullable @Body String body) {
         return handleRequest(request, "DELETE", "/api/" + path, body);
     }
 
@@ -119,17 +121,17 @@ public class DynamicRoutingController {
     @Patch("/{+path}")
     @Consumes({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
     @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
-    public HttpResponse<Map<String, Object>> handlePatch(
+    public HttpResponse<?> handlePatch(
             HttpRequest<?> request,
             @PathVariable String path,
-            @Body(value = "") String body) {
+            @Nullable @Body String body) {
         return handleRequest(request, "PATCH", "/api/" + path, body);
     }
 
     /**
      * Common request handler for all HTTP methods.
      */
-    private HttpResponse<Map<String, Object>> handleRequest(
+    private HttpResponse<?> handleRequest(
             HttpRequest<?> request,
             String method,
             String fullPath,
@@ -165,7 +167,7 @@ public class DynamicRoutingController {
     /**
      * Builds the HTTP response based on SQL result and content negotiation.
      */
-    private HttpResponse<Map<String, Object>> buildResponse(
+    private HttpResponse<?> buildResponse(
             HttpRequest<?> request,
             EndpointConfig config,
             SqlExecutionResult result) {
@@ -173,10 +175,40 @@ public class DynamicRoutingController {
         HttpStatus status = determineStatus(config, result);
         MediaType mediaType = responseSerializer.getPreferredMediaType(request);
 
+        // Choose response format based on endpoint configuration
+        Object responseBody;
+        if (config.getEffectiveResponseFormat() == EndpointConfig.ResponseFormat.RAW) {
+            // Raw format: return data directly
+            responseBody = getRawResponseBody(result);
+        } else {
+            // Wrapped format (default): return with metadata
+            responseBody = result.toMap();
+        }
+
         return HttpResponse
                 .status(status)
                 .contentType(mediaType)
-                .body(result.toMap());
+                .body(responseBody);
+    }
+
+    /**
+     * Extracts raw response body from SqlExecutionResult.
+     * For SELECT: returns data array directly
+     * For INSERT/UPDATE/DELETE: returns minimal response
+     */
+    private Object getRawResponseBody(SqlExecutionResult result) {
+        return switch (result.getSqlType()) {
+            case SELECT -> result.getData() != null ? result.getData() : List.of();
+            case INSERT -> Map.of(
+                    "affectedRows", result.getAffectedRows(),
+                    "generatedId", result.getGeneratedId() != null ? result.getGeneratedId() : ""
+            );
+            case UPDATE, DELETE -> Map.of("affectedRows", result.getAffectedRows());
+            case BATCH -> Map.of(
+                    "affectedRows", result.getAffectedRows(),
+                    "batchCount", result.getBatchCount()
+            );
+        };
     }
 
     /**

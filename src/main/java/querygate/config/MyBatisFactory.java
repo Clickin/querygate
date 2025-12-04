@@ -1,6 +1,7 @@
 package querygate.config;
 
 import querygate.interceptor.SqlLoggingInterceptor;
+import io.micronaut.context.annotation.Context;
 import io.micronaut.context.annotation.Factory;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
@@ -54,6 +55,7 @@ public class MyBatisFactory {
      * This factory is initialized at startup and can be hot-reloaded.
      */
     @Singleton
+    @Context
     public SqlSessionFactory sqlSessionFactory() {
         SqlSessionFactory factory = createSqlSessionFactory();
         sessionFactoryRef.set(factory);

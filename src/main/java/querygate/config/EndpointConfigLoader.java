@@ -204,7 +204,19 @@ public class EndpointConfigLoader {
             batchConfig = parseBatchConfig(batchMap);
         }
 
-        return new EndpointConfig(path, method, sqlId, sqlType, description, validation, batchConfig);
+        // Parse response format
+        EndpointConfig.ResponseFormat responseFormat = null;
+        String responseFormatStr = (String) ep.get("response-format");
+        if (responseFormatStr != null && !responseFormatStr.isBlank()) {
+            try {
+                responseFormat = EndpointConfig.ResponseFormat.valueOf(responseFormatStr.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                LOG.warn("Invalid response-format '{}' for endpoint {} {}, defaulting to WRAPPED",
+                        responseFormatStr, method, path);
+            }
+        }
+
+        return new EndpointConfig(path, method, sqlId, sqlType, description, validation, batchConfig, responseFormat);
     }
 
     @SuppressWarnings("unchecked")

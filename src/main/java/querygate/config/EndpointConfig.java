@@ -16,8 +16,18 @@ public record EndpointConfig(
         SqlType sqlType,
         @Nullable String description,
         @Nullable ValidationConfig validation,
-        @Nullable BatchConfig batchConfig
+        @Nullable BatchConfig batchConfig,
+        @Nullable ResponseFormat responseFormat
 ) {
+    /**
+     * Response format options.
+     */
+    public enum ResponseFormat {
+        /** Wrapped format with metadata: {"success": true, "data": [...], "count": 1} */
+        WRAPPED,
+        /** Raw format returning data directly: [...] */
+        RAW
+    }
     /**
      * Validation configuration for endpoint parameters.
      */
@@ -105,6 +115,13 @@ public record EndpointConfig(
     }
 
     /**
+     * Returns the effective response format, defaulting to WRAPPED if not specified.
+     */
+    public ResponseFormat getEffectiveResponseFormat() {
+        return responseFormat != null ? responseFormat : ResponseFormat.WRAPPED;
+    }
+
+    /**
      * Builder for creating EndpointConfig instances programmatically.
      */
     public static Builder builder() {
@@ -119,6 +136,7 @@ public record EndpointConfig(
         private String description;
         private ValidationConfig validation;
         private BatchConfig batchConfig;
+        private ResponseFormat responseFormat;
 
         public Builder path(String path) {
             this.path = path;
@@ -155,6 +173,11 @@ public record EndpointConfig(
             return this;
         }
 
+        public Builder responseFormat(ResponseFormat responseFormat) {
+            this.responseFormat = responseFormat;
+            return this;
+        }
+
         public EndpointConfig build() {
             if (path == null || path.isBlank()) {
                 throw new IllegalArgumentException("path is required");
@@ -169,7 +192,7 @@ public record EndpointConfig(
                 throw new IllegalArgumentException("sqlType is required");
             }
             return new EndpointConfig(path, method.toUpperCase(), sqlId, sqlType,
-                    description, validation, batchConfig);
+                    description, validation, batchConfig, responseFormat);
         }
     }
 }

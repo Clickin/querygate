@@ -119,3 +119,13 @@ endpoints:
           min-items: 1
           max-items: 1000
       optional: []
+
+  # POST /api/studyUid -> select study UIDs
+  - path: /api/studyUid
+    method: POST
+    sql-id: PacsMapper.selectStudyInstanceUid
+    sql-type: SELECT
+    description: "Retrieve study instance uids from hisorderid"
+    validation:
+      required: []
+      optional: []
