@@ -4,6 +4,10 @@ micronaut:
   server:
     port: 8080
     thread-selection: AUTO
+    netty:
+      # Graceful shutdown configuration
+      shutdown-quiet-period: 2s
+      shutdown-timeout: 15s
   metrics:
     enabled: true
     export:
@@ -75,6 +79,13 @@ gateway:
     enabled: ${GATEWAY_SECURITY_ENABLED:true}
     api-key-header: Authorization
     api-keys: ${GATEWAY_API_KEYS:}
+
+  # Error handling configuration
+  error-handling:
+    # Expose detailed error messages (recommended: false in production)
+    expose-details: ${GATEWAY_ERROR_EXPOSE_DETAILS:true}
+    # Include stack traces in error responses (recommended: false in production)
+    expose-stack-trace: ${GATEWAY_ERROR_EXPOSE_STACK_TRACE:false}
 
 # Logging configuration
 logger:

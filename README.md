@@ -45,6 +45,37 @@ A high-performance, configuration-driven API gateway that dynamically routes HTT
 
 ## Quick Start
 
+### 🐳 Docker Quick Start (Recommended)
+
+The fastest way to try QueryGate:
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/Clickin/querygate.git
+cd querygate
+
+# 2. Start with Docker Compose
+docker-compose up -d
+
+# 3. Wait for health check (about 30 seconds)
+docker-compose ps
+
+# 4. Test the API
+curl http://localhost:8080/health
+```
+
+The server will be available at `http://localhost:8080` with:
+- Security disabled for easy testing
+- H2 in-memory database pre-configured
+- Sample endpoints from `config/endpoint-config.yml`
+
+**Stop the service:**
+```bash
+docker-compose down
+```
+
+### 📦 Local Development Setup
+
 ### Prerequisites
 - Java 25 (using SDKMAN recommended)
 - Gradle 9.2.1 (wrapper included)
@@ -99,6 +130,22 @@ gateway:
 ```
 
 ### Endpoint Configuration
+
+**IDE Support with JSON Schema:**
+
+The project includes a JSON Schema (`src/main/resources/schemas/endpoint-config.schema.json`) for IDE autocomplete and validation. Your IDE will automatically provide suggestions and validation if you add this comment at the top of your YAML file:
+
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Clickin/querygate/main/src/main/resources/schemas/endpoint-config.schema.json
+```
+
+For local development, you can also use a relative path:
+```yaml
+# yaml-language-server: $schema=../src/main/resources/schemas/endpoint-config.schema.json
+```
+
+**Configuration File:**
+
 Create/edit `config/endpoint-config.yml`:
 
 ```yaml
@@ -439,19 +486,150 @@ Changes are detected and reloaded automatically without restart.
 
 ## Error Handling
 
-The gateway provides structured error responses:
+The gateway provides structured error responses with configurable detail levels.
 
+### Error Response Configuration
+
+Control error detail exposure via `application.yml`:
+
+```yaml
+gateway:
+  error-handling:
+    # Expose detailed error messages (default: true in dev, false in prod)
+    expose-details: true
+    # Include stack traces in responses (default: false)
+    expose-stack-trace: false
+```
+
+**Security Note:** In production, set `expose-details: false` to prevent exposing:
+- Internal SQL query details
+- MyBatis mapper names and SQL IDs
+- Detailed validation error messages
+- System implementation details
+
+### Error Response Examples
+
+**Development Mode (expose-details: true):**
 ```json
 {
   "success": false,
-  "error": "Validation failed",
+  "error": "Request Body Parse Error",
+  "message": "Invalid JSON format: Unexpected token at position 5",
+  "contentType": "application/json",
+  "path": "/api/users",
+  "method": "POST"
+}
+```
+
+**Production Mode (expose-details: false):**
+```json
+{
+  "success": false,
+  "error": "Request Body Parse Error",
+  "message": "Invalid request format",
+  "path": "/api/users",
+  "method": "POST"
+}
+```
+
+**Validation Error (with details):**
+```json
+{
+  "success": false,
+  "error": "Validation Error",
+  "message": "Validation failed",
   "details": [
     "Required parameter 'username' is missing",
     "Parameter 'age' must be at least 18"
   ],
-  "timestamp": "2025-12-04T14:30:00Z"
+  "path": "/api/users",
+  "method": "POST"
 }
 ```
+
+**Database Error (production mode):**
+```json
+{
+  "success": false,
+  "error": "Database Error",
+  "message": "A database error occurred",
+  "path": "/api/users",
+  "method": "GET"
+}
+```
+
+All errors are always logged server-side with full details for debugging.
+
+### RAW Response Format Error Handling
+
+**Important:** For endpoints configured with `response-format: raw`, error handling works differently to prevent client-side DTO mapping issues.
+
+**Problem:**
+```yaml
+# Endpoint configuration
+- path: /api/users
+  method: GET
+  sql-type: SELECT
+  response-format: raw  # Client expects: List<User>
+```
+
+If errors returned JSON like `{"success": false, "error": "..."}`, client DTO mapping would fail since it expects `List<User>`.
+
+**Solution:**
+
+For RAW format endpoints, errors are returned via **HTTP headers** with an **empty response body**:
+
+```bash
+# Error response for RAW format endpoint
+HTTP/1.1 400 Bad Request
+X-Error-Type: ValidationError
+X-Error-Message: Request validation failed
+Content-Length: 0
+```
+
+**Error Headers:**
+- `X-Error-Type`: Error category (ValidationError, ParseError, DatabaseError, NotFound, BadRequest, InternalError)
+- `X-Error-Message`: Human-readable error message
+- `X-Error-Details`: Additional error details (when expose-details: true)
+- `X-Error-SqlId`: SQL statement ID (for database errors, when expose-details: true)
+- `X-Error-ContentType`: Request content type (for parse errors, when expose-details: true)
+
+**Client Implementation Example:**
+
+```java
+// Java client example
+HttpResponse<List<User>> response = client.get("/api/users");
+
+if (response.getStatusCode() >= 400) {
+    String errorType = response.getHeaders().get("X-Error-Type");
+    String errorMessage = response.getHeaders().get("X-Error-Message");
+    throw new ApiException(errorType, errorMessage);
+}
+
+List<User> users = response.getBody(); // Safe - only reached on success
+```
+
+```typescript
+// TypeScript client example
+const response = await fetch('/api/users');
+
+if (!response.ok) {
+  const errorType = response.headers.get('X-Error-Type');
+  const errorMessage = response.headers.get('X-Error-Message');
+  throw new Error(`${errorType}: ${errorMessage}`);
+}
+
+const users: User[] = await response.json(); // Safe DTO mapping
+```
+
+**Key Points:**
+- ✅ Always check HTTP status code first (200-299 = success)
+- ✅ For errors (400+), read error info from headers
+- ✅ Response body is empty on errors for RAW format
+- ✅ Prevents DTO mapping exceptions on client side
+- ✅ Works with all typed HTTP clients
+
+**WRAPPED format** (default) continues to use structured JSON error responses as shown above.
 
 ## Security
 

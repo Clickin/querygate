@@ -1,0 +1,214 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://querygate.io/schemas/endpoint-config.schema.json",
+  "title": "QueryGate Endpoint Configuration",
+  "description": "Schema for QueryGate endpoint configuration files",
+  "type": "object",
+  "required": ["endpoints"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Configuration file version",
+      "default": "1.0"
+    },
+    "defaults": {
+      "type": "object",
+      "description": "Global defaults for all endpoints",
+      "properties": {
+        "response-format": {
+          "type": "string",
+          "enum": ["json", "xml"],
+          "default": "json",
+          "description": "Default response format"
+        },
+        "max-rows": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1000,
+          "description": "Maximum number of rows to return"
+        },
+        "timeout-seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 30,
+          "description": "Query timeout in seconds"
+        }
+      },
+      "additionalProperties": false
+    },
+    "endpoints": {
+      "type": "array",
+      "description": "List of API endpoint definitions",
+      "items": {
+        "$ref": "#/definitions/endpoint"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "endpoint": {
+      "type": "object",
+      "required": ["path", "method", "sql-id", "sql-type"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "URL path pattern (e.g., /api/users/{id})",
+          "pattern": "^/",
+          "examples": ["/api/users", "/api/users/{id}"]
+        },
+        "method": {
+          "type": "string",
+          "enum": ["GET", "POST", "PUT", "DELETE", "PATCH"],
+          "description": "HTTP method"
+        },
+        "sql-id": {
+          "type": "string",
+          "description": "MyBatis SQL statement ID (e.g., UserMapper.selectAllUsers)",
+          "pattern": "^[A-Za-z0-9_]+\\.[A-Za-z0-9_]+$"
+        },
+        "sql-type": {
+          "type": "string",
+          "enum": ["SELECT", "INSERT", "UPDATE", "DELETE", "BATCH"],
+          "description": "SQL operation type"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of this endpoint"
+        },
+        "response-format": {
+          "type": "string",
+          "enum": ["json", "xml"],
+          "description": "Response format override for this endpoint"
+        },
+        "validation": {
+          "$ref": "#/definitions/validation"
+        },
+        "batch-config": {
+          "$ref": "#/definitions/batchConfig"
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "sql-type": {
+                "const": "BATCH"
+              }
+            }
+          },
+          "then": {
+            "required": ["batch-config"]
+          }
+        }
+      ]
+    },
+    "validation": {
+      "type": "object",
+      "description": "Parameter validation configuration",
+      "properties": {
+        "required": {
+          "type": "array",
+          "description": "Required parameters",
+          "items": {
+            "$ref": "#/definitions/parameter"
+          },
+          "default": []
+        },
+        "optional": {
+          "type": "array",
+          "description": "Optional parameters",
+          "items": {
+            "$ref": "#/definitions/parameter"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "parameter": {
+      "type": "object",
+      "required": ["name", "type"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Parameter name"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["string", "integer", "long", "double", "boolean", "array", "object"],
+          "description": "Parameter data type"
+        },
+        "source": {
+          "type": "string",
+          "enum": ["path", "query", "body"],
+          "description": "Parameter source (defaults to body or query)",
+          "default": "body"
+        },
+        "default": {
+          "description": "Default value if parameter is not provided"
+        },
+        "pattern": {
+          "type": "string",
+          "description": "Regex pattern for string validation",
+          "format": "regex"
+        },
+        "min-length": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Minimum string length"
+        },
+        "max-length": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum string length"
+        },
+        "min": {
+          "type": "number",
+          "description": "Minimum numeric value"
+        },
+        "max": {
+          "type": "number",
+          "description": "Maximum numeric value"
+        },
+        "min-items": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Minimum array length"
+        },
+        "max-items": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum array length"
+        },
+        "allowed-values": {
+          "type": "array",
+          "description": "Whitelist of allowed values",
+          "items": {
+            "type": ["string", "number", "boolean"]
+          },
+          "minItems": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "batchConfig": {
+      "type": "object",
+      "description": "Configuration for batch operations",
+      "required": ["item-key"],
+      "properties": {
+        "item-key": {
+          "type": "string",
+          "description": "JSON key containing the array of items to process"
+        },
+        "batch-size": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 100,
+          "description": "Number of items to process per batch"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

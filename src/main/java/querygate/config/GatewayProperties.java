@@ -18,7 +18,8 @@ public record GatewayProperties(
         HotReloadConfig hotReload,
         SqlLoggingConfig sqlLogging,
         VirtualThreadConfig virtualThreads,
-        SecurityConfig security
+        SecurityConfig security,
+        ErrorHandlingConfig errorHandling
 ) {
 
     public GatewayProperties {
@@ -28,6 +29,7 @@ public record GatewayProperties(
         sqlLogging = sqlLogging != null ? sqlLogging : new SqlLoggingConfig(true, true, true, 1000);
         virtualThreads = virtualThreads != null ? virtualThreads : new VirtualThreadConfig(true, "gateway-virtual-executor");
         security = security != null ? security : new SecurityConfig(true, "X-API-Key", List.of());
+        errorHandling = errorHandling != null ? errorHandling : new ErrorHandlingConfig(false, false);
     }
 
     @ConfigurationProperties("mybatis")
@@ -77,6 +79,23 @@ public record GatewayProperties(
         public SecurityConfig {
             apiKeyHeader = defaultIfBlank(apiKeyHeader, "Authorization");
             apiKeys = apiKeys == null ? List.of() : List.copyOf(apiKeys);
+        }
+    }
+
+    @ConfigurationProperties("error-handling")
+    public record ErrorHandlingConfig(
+            @Bindable(defaultValue = "false") boolean exposeDetails,
+            @Bindable(defaultValue = "false") boolean exposeStackTrace
+    ) {
+        /**
+         * @param exposeDetails Whether to expose detailed error messages to clients.
+         *                      If false, returns generic error messages.
+         *                      Recommended: false in production, true in development.
+         * @param exposeStackTrace Whether to include stack traces in error responses.
+         *                         If false, stack traces are only logged server-side.
+         *                         Recommended: false in production, true in development.
+         */
+        public ErrorHandlingConfig {
         }
     }
 
