@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -40,7 +41,8 @@ public class EndpointConfigLoader {
     private final Map<EndpointKey, EndpointConfig> endpointMap = new ConcurrentHashMap<>();
 
     // List of configs with path variables (need pattern matching)
-    private final List<PatternEndpoint> patternEndpoints = new ArrayList<>();
+    // Using CopyOnWriteArrayList for thread-safe iteration during hot reload
+    private final List<PatternEndpoint> patternEndpoints = new CopyOnWriteArrayList<>();
 
     public EndpointConfigLoader(GatewayProperties properties) {
         this.properties = properties;
