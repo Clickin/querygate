@@ -43,6 +43,13 @@ public class GlobalExceptionHandler implements ExceptionHandler<Exception, HttpR
             return HttpResponse.status(HttpStatus.BAD_REQUEST).body(error);
         }
 
+        if (exception instanceof RequestBodyParseException pe) {
+            error.put("error", "Request Body Parse Error");
+            error.put("message", pe.getMessage());
+            error.put("contentType", pe.getContentType());
+            return HttpResponse.status(HttpStatus.BAD_REQUEST).body(error);
+        }
+
         if (exception instanceof EndpointNotFoundException enf) {
             error.put("error", "Endpoint Not Found");
             error.put("message", enf.getMessage());

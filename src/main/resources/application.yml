@@ -4,6 +4,10 @@ micronaut:
   server:
     port: 8080
     thread-selection: AUTO
+    netty:
+      # Graceful shutdown configuration
+      shutdown-quiet-period: 2s
+      shutdown-timeout: 15s
   metrics:
     enabled: true
     export:

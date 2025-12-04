@@ -45,6 +45,37 @@ A high-performance, configuration-driven API gateway that dynamically routes HTT
 
 ## Quick Start
 
+### 🐳 Docker Quick Start (Recommended)
+
+The fastest way to try QueryGate:
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/Clickin/querygate.git
+cd querygate
+
+# 2. Start with Docker Compose
+docker-compose up -d
+
+# 3. Wait for health check (about 30 seconds)
+docker-compose ps
+
+# 4. Test the API
+curl http://localhost:8080/health
+```
+
+The server will be available at `http://localhost:8080` with:
+- Security disabled for easy testing
+- H2 in-memory database pre-configured
+- Sample endpoints from `config/endpoint-config.yml`
+
+**Stop the service:**
+```bash
+docker-compose down
+```
+
+### 📦 Local Development Setup
+
 ### Prerequisites
 - Java 25 (using SDKMAN recommended)
 - Gradle 9.2.1 (wrapper included)

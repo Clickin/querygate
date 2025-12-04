@@ -11,6 +11,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+import querygate.exception.RequestBodyParseException;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -110,6 +111,8 @@ public class InputMergerService {
 
     /**
      * Parses JSON body into a Map.
+     *
+     * @throws RequestBodyParseException if JSON parsing fails
      */
     @SuppressWarnings("unchecked")
     private Map<String, Object> parseJsonBody(String body) {
@@ -117,13 +120,19 @@ public class InputMergerService {
             return objectMapper.readValue(body, Map.class);
         } catch (Exception e) {
             LOG.error("Failed to parse JSON body: {}", e.getMessage());
-            return Collections.emptyMap();
+            throw new RequestBodyParseException(
+                "Invalid JSON format: " + e.getMessage(),
+                "application/json",
+                e
+            );
         }
     }
 
     /**
      * Parses XML body into a Map.
      * Uses secure XML parsing to prevent XXE attacks.
+     *
+     * @throws RequestBodyParseException if XML parsing fails
      */
     private Map<String, Object> parseXmlBody(String body) {
         try {
@@ -144,7 +153,11 @@ public class InputMergerService {
             return xmlToMap(doc.getDocumentElement());
         } catch (Exception e) {
             LOG.error("Failed to parse XML body: {}", e.getMessage());
-            return Collections.emptyMap();
+            throw new RequestBodyParseException(
+                "Invalid XML format: " + e.getMessage(),
+                "application/xml",
+                e
+            );
         }
     }
 

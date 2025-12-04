@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  # QueryGate API Gateway
+  querygate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: querygate
+    ports:
+      - "8080:8080"
+    environment:
+      # Database configuration
+      - JDBC_URL=jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+      - JDBC_USERNAME=sa
+      - JDBC_PASSWORD=
+      - JDBC_DRIVER=org.h2.Driver
+
+      # Gateway configuration
+      - GATEWAY_SECURITY_ENABLED=false
+      - GATEWAY_ENDPOINT_CONFIG_PATH=./config/endpoint-config.yml
+      - GATEWAY_MYBATIS_MAPPER_LOCATIONS=./config/mappers
+
+      # Hot reload (disabled in Docker)
+      - GATEWAY_HOT_RELOAD_ENABLED=false
+
+      # Virtual threads
+      - MICRONAUT_SERVER_VIRTUAL_THREADS_ENABLED=true
+
+      # Logging
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./config:/app/config:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - querygate-network
+
+  # Optional: PostgreSQL database for production-like setup
+  # Uncomment to use PostgreSQL instead of H2
+  # postgres:
+  #   image: postgres:16-alpine
+  #   container_name: querygate-postgres
+  #   environment:
+  #     - POSTGRES_DB=querygate
+  #     - POSTGRES_USER=querygate
+  #     - POSTGRES_PASSWORD=querygate123
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres-data:/var/lib/postgresql/data
+  #     - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U querygate"]
+  #     interval: 5s
+  #     timeout: 5s
+  #     retries: 5
+  #   networks:
+  #     - querygate-network
+
+networks:
+  querygate-network:
+    driver: bridge
+
+# Uncomment when using PostgreSQL
+# volumes:
+#   postgres-data:
