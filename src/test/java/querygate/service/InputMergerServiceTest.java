@@ -7,6 +7,7 @@ import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.*;
@@ -168,22 +169,23 @@ class InputMergerServiceTest {
 
         // Assert
         assertThat(result)
-                .containsEntry("tag", new String[]{"java", "testing"});
+                .containsKey("tag");
+        assertThat(result.get("tag"))
+                .isInstanceOf(List.class)
+                .isEqualTo(List.of("java", "testing"));
     }
 
     @Test
-    void testWhenInvalidJsonBodyThenReturnsEmptyMap() {
+    void testWhenInvalidJsonBodyThenThrowsParseException() {
         // Arrange
         HttpRequest<?> request = createRequestWithJsonBody();
         Map<String, String> pathVars = Map.of("id", "123");
         String invalidBody = "{invalid json}";
 
-        // Act
-        Map<String, Object> result = inputMergerService.mergeInputs(request, pathVars, invalidBody);
-
-        // Assert
-        assertThat(result)
-                .containsEntry("id", "123");  // still has path variables
+        // Act & Assert
+        assertThatThrownBy(() -> inputMergerService.mergeInputs(request, pathVars, invalidBody))
+                .isInstanceOf(querygate.exception.RequestBodyParseException.class)
+                .hasMessageContaining("Invalid JSON format");
     }
 
     // Helper methods to create mock requests

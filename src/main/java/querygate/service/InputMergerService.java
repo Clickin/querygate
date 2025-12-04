@@ -1,9 +1,10 @@
 package querygate.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micronaut.core.annotation.Nullable;
+import io.micronaut.core.type.Argument;
 import io.micronaut.http.HttpRequest;
 import io.micronaut.http.MediaType;
+import io.micronaut.serde.ObjectMapper;
 import jakarta.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +20,6 @@ import java.io.ByteArrayInputStream;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -117,7 +117,7 @@ public class InputMergerService {
     @SuppressWarnings("unchecked")
     private Map<String, Object> parseJsonBody(String body) {
         try {
-            return objectMapper.readValue(body, Map.class);
+            return objectMapper.readValue(body, Argument.mapOf(String.class, Object.class));
         } catch (Exception e) {
             LOG.error("Failed to parse JSON body: {}", e.getMessage());
             throw new RequestBodyParseException(

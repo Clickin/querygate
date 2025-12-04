@@ -1,5 +1,7 @@
 package querygate.health;
 
+import com.zaxxer.hikari.HikariDataSource;
+import com.zaxxer.hikari.HikariPoolMXBean;
 import io.micronaut.context.annotation.Requires;
 import io.micronaut.health.HealthStatus;
 import io.micronaut.management.health.indicator.HealthIndicator;
@@ -11,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
+import javax.sql.DataSource;
 import java.sql.Connection;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -27,9 +30,12 @@ public class DatabaseHealthIndicator implements HealthIndicator {
     private static final String NAME = "database";
 
     private final SqlSessionFactory sqlSessionFactory;
+    private final HikariDataSource hikariDataSource;
 
-    public DatabaseHealthIndicator(SqlSessionFactory sqlSessionFactory) {
+    public DatabaseHealthIndicator(SqlSessionFactory sqlSessionFactory, DataSource dataSource) {
         this.sqlSessionFactory = sqlSessionFactory;
+        this.hikariDataSource = dataSource instanceof HikariDataSource ?
+                (HikariDataSource) dataSource : null;
     }
 
     @Override
@@ -52,6 +58,7 @@ public class DatabaseHealthIndicator implements HealthIndicator {
                 details.put("database", connection.getMetaData().getDatabaseProductName());
                 details.put("version", connection.getMetaData().getDatabaseProductVersion());
                 details.put("url", sanitizeUrl(connection.getMetaData().getURL()));
+                addPoolMetrics(details);
 
                 LOG.debug("Database health check passed");
                 return HealthResult.builder(NAME, HealthStatus.UP)
@@ -60,6 +67,7 @@ public class DatabaseHealthIndicator implements HealthIndicator {
             } else {
                 details.put("status", "DOWN");
                 details.put("reason", "Connection validation failed");
+                addPoolMetrics(details);
 
                 LOG.warn("Database health check failed: Connection not valid");
                 return HealthResult.builder(NAME, HealthStatus.DOWN)
@@ -88,5 +96,18 @@ public class DatabaseHealthIndicator implements HealthIndicator {
         }
         // Remove password parameter if present
         return url.replaceAll("password=[^;&]*", "password=***");
+    }
+
+    private void addPoolMetrics(Map<String, Object> details) {
+        if (hikariDataSource == null) {
+            return;
+        }
+        HikariPoolMXBean poolMXBean = hikariDataSource.getHikariPoolMXBean();
+        if (poolMXBean != null) {
+            details.put("pool.active", poolMXBean.getActiveConnections());
+            details.put("pool.idle", poolMXBean.getIdleConnections());
+            details.put("pool.total", poolMXBean.getTotalConnections());
+            details.put("pool.waiting", poolMXBean.getThreadsAwaitingConnection());
+        }
     }
 }

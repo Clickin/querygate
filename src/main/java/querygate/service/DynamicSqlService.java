@@ -7,6 +7,7 @@ import querygate.model.SqlExecutionResult;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import jakarta.inject.Singleton;
+import org.apache.ibatis.executor.BatchResult;
 import org.apache.ibatis.session.ExecutorType;
 import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
@@ -214,13 +215,14 @@ public class DynamicSqlService {
         int totalAffected = 0;
         int batchCount = 0;
 
-        try (SqlSession session = factory.openSession(ExecutorType.BATCH, false)) {
+        SqlSession session = factory.openSession(ExecutorType.BATCH, false);
+        try (session) {
             for (int i = 0; i < items.size(); i++) {
                 session.insert(config.sqlId(), items.get(i));
 
                 // Flush batch at batch size intervals
                 if ((i + 1) % batchSize == 0) {
-                    session.flushStatements();
+                    totalAffected += flushAndCount(session);
                     session.commit();
                     batchCount++;
                 }
@@ -228,15 +230,32 @@ public class DynamicSqlService {
 
             // Flush remaining items
             if (items.size() % batchSize != 0) {
-                session.flushStatements();
+                totalAffected += flushAndCount(session);
                 session.commit();
                 batchCount++;
             }
 
-            totalAffected = items.size();
+            LOG.debug("BATCH completed: {} items in {} batches", totalAffected, batchCount);
+            return SqlExecutionResult.forBatch(totalAffected, batchCount);
+        } catch (Exception e) {
+            try {
+                session.rollback();
+            } catch (Exception rollbackError) {
+                LOG.warn("Rollback failed after batch error: {}", rollbackError.getMessage(), rollbackError);
+            }
+            throw new SqlExecutionException(config.sqlId(), "Batch execution failed", e);
         }
+    }
 
-        LOG.debug("BATCH completed: {} items in {} batches", totalAffected, batchCount);
-        return SqlExecutionResult.forBatch(totalAffected, batchCount);
+    private int flushAndCount(SqlSession session) {
+        return session.flushStatements().stream()
+                .mapToInt((BatchResult result) -> {
+                    int count = 0;
+                    for (int updateCount : result.getUpdateCounts()) {
+                        count += Math.max(updateCount, 0);
+                    }
+                    return count;
+                })
+                .sum();
     }
 }

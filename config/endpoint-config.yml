@@ -3,7 +3,7 @@ version: "1.0"
 
 # Global defaults for all endpoints
 defaults:
-  response-format: json
+  response-format: WRAPPED
   max-rows: 1000
   timeout-seconds: 30
 

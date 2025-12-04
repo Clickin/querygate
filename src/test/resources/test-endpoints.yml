@@ -25,7 +25,10 @@ endpoints:
     sql-type: SELECT
     description: "Get user by ID"
     validation:
-      required: [id]
+      required:
+        - name: id
+          type: integer
+          source: path
       optional: []
 
   - path: /api/users
@@ -34,7 +37,13 @@ endpoints:
     sql-type: INSERT
     description: "Create new user"
     validation:
-      required: [id, name, email]
+      required:
+        - name: id
+          type: integer
+        - name: name
+          type: string
+        - name: email
+          type: string
       optional: []
 
   - path: /api/users/{id}
@@ -43,7 +52,14 @@ endpoints:
     sql-type: UPDATE
     description: "Update user"
     validation:
-      required: [name, email]
+      required:
+        - name: id
+          type: integer
+          source: path
+        - name: name
+          type: string
+        - name: email
+          type: string
       optional: []
 
   - path: /api/users/{id}
@@ -52,7 +68,10 @@ endpoints:
     sql-type: DELETE
     description: "Delete user"
     validation:
-      required: []
+      required:
+        - name: id
+          type: integer
+          source: path
       optional: []
 
   - path: /api/health

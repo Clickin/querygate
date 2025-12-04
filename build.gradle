@@ -30,6 +30,7 @@ dependencies {
     implementation("io.micronaut.serde:micronaut-serde-jackson")
     implementation("io.micronaut.sql:micronaut-jdbc-hikari")
     implementation("io.micronaut.validation:micronaut-validation")
+    implementation("com.networknt:json-schema-validator:1.0.103")
 
     // MyBatis (manual configuration, no starter)
     implementation("org.mybatis:mybatis:3.5.19")
@@ -42,6 +43,9 @@ dependencies {
 
     // HTTP client
     compileOnly("io.micronaut:micronaut-http-client")
+
+    // Reactive (for HealthIndicator Publisher interface)
+    implementation("io.projectreactor:reactor-core")
 
     // Logging
     runtimeOnly("ch.qos.logback:logback-classic")

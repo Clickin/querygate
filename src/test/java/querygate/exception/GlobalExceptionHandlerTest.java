@@ -3,6 +3,8 @@ package querygate.exception;
 import io.micronaut.http.HttpRequest;
 import io.micronaut.http.HttpResponse;
 import io.micronaut.http.HttpStatus;
+import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
+import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 import querygate.validation.ValidationException;
 
@@ -15,13 +17,11 @@ import static org.assertj.core.api.Assertions.*;
  * Unit tests for GlobalExceptionHandler.
  * Tests exception handling and HTTP response generation.
  */
+@MicronautTest
 class GlobalExceptionHandlerTest {
 
-    private final GlobalExceptionHandler globalExceptionHandler;
-
-    GlobalExceptionHandlerTest() {
-        this.globalExceptionHandler = new GlobalExceptionHandler();
-    }
+    @Inject
+    private GlobalExceptionHandler globalExceptionHandler;
 
     @Test
     void testWhenEndpointNotFoundThenReturns404() {

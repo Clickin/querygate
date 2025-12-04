@@ -6,6 +6,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * Immutable configuration properties for the SQL Gateway.
@@ -28,7 +30,12 @@ public record GatewayProperties(
         hotReload = hotReload != null ? hotReload : new HotReloadConfig(true, 5000);
         sqlLogging = sqlLogging != null ? sqlLogging : new SqlLoggingConfig(true, true, true, 1000);
         virtualThreads = virtualThreads != null ? virtualThreads : new VirtualThreadConfig(true, "gateway-virtual-executor");
-        security = security != null ? security : new SecurityConfig(true, "X-API-Key", List.of());
+        security = security != null ? security : new SecurityConfig(true, "Authorization", List.of());
+        if (security.enabled() && security.apiKeys().isEmpty()) {
+            throw new IllegalStateException(
+                    "Security is enabled but no API keys are configured. " +
+                            "Set gateway.security.api-keys or disable security explicitly.");
+        }
         errorHandling = errorHandling != null ? errorHandling : new ErrorHandlingConfig(false, false);
     }
 
@@ -70,17 +77,21 @@ public record GatewayProperties(
         }
     }
 
-    @ConfigurationProperties("security")
-    public record SecurityConfig(
-            @Bindable(defaultValue = "true") boolean enabled,
-            @Bindable(defaultValue = "Authorization") String apiKeyHeader,
-            List<String> apiKeys
-    ) {
-        public SecurityConfig {
-            apiKeyHeader = defaultIfBlank(apiKeyHeader, "Authorization");
-            apiKeys = apiKeys == null ? List.of() : List.copyOf(apiKeys);
+        @ConfigurationProperties("security")
+        public record SecurityConfig(
+                @Bindable(defaultValue = "true") boolean enabled,
+                @Bindable(defaultValue = "Authorization") String apiKeyHeader,
+                List<String> apiKeys
+        ) {
+            public SecurityConfig {
+                apiKeyHeader = defaultIfBlank(apiKeyHeader, "Authorization");
+                apiKeys = apiKeys == null ? List.of() : apiKeys.stream()
+                        .filter(Objects::nonNull)
+                        .map(String::trim)
+                        .filter(key -> !key.isEmpty())
+                        .collect(Collectors.toUnmodifiableList());
+            }
         }
-    }
 
     @ConfigurationProperties("error-handling")
     public record ErrorHandlingConfig(

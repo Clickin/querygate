@@ -1,6 +1,10 @@
 package querygate.config;
 
-import querygate.model.SqlType;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.networknt.schema.JsonSchema;
+import com.networknt.schema.JsonSchemaFactory;
+import com.networknt.schema.SpecVersion;
+import com.networknt.schema.ValidationMessage;
 import io.micronaut.context.annotation.Context;
 import io.micronaut.context.event.StartupEvent;
 import io.micronaut.runtime.event.annotation.EventListener;
@@ -8,19 +12,24 @@ import jakarta.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
+import querygate.model.SqlType;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Loads and manages endpoint configuration from external YAML file.
@@ -44,8 +53,12 @@ public class EndpointConfigLoader {
     // Using CopyOnWriteArrayList for thread-safe iteration during hot reload
     private final List<PatternEndpoint> patternEndpoints = new CopyOnWriteArrayList<>();
 
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final JsonSchema endpointSchema;
+
     public EndpointConfigLoader(GatewayProperties properties) {
         this.properties = properties;
+        this.endpointSchema = loadSchema();
     }
 
     @EventListener
@@ -69,13 +82,27 @@ public class EndpointConfigLoader {
         }
 
         try {
-            Yaml yaml = new Yaml();
-            Map<String, Object> config = yaml.load(Files.newInputStream(path));
-            parseEndpoints(config);
+            String yamlContent = Files.readString(path);
+            Map<String, Object> config = loadYaml(yamlContent);
+            validateAgainstSchema(config);
+
+            Map<EndpointKey, EndpointConfig> newEndpointMap = new ConcurrentHashMap<>();
+            List<PatternEndpoint> newPatternEndpoints = new CopyOnWriteArrayList<>();
+
+            parseEndpoints(config, newEndpointMap, newPatternEndpoints);
+
+            endpointMap.clear();
+            endpointMap.putAll(newEndpointMap);
+            patternEndpoints.clear();
+            patternEndpoints.addAll(newPatternEndpoints);
+
             LOG.info("Loaded {} endpoint configurations", endpointMap.size() + patternEndpoints.size());
         } catch (IOException e) {
             LOG.error("Failed to load endpoint configuration", e);
             throw new IllegalStateException("Failed to load endpoint configuration", e);
+        } catch (IllegalStateException e) {
+            LOG.error("Invalid endpoint configuration: {}", e.getMessage());
+            throw e;
         }
     }
 
@@ -87,6 +114,47 @@ public class EndpointConfigLoader {
         endpointMap.clear();
         patternEndpoints.clear();
         loadConfiguration();
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> loadYaml(String yamlContent) {
+        Yaml yaml = new Yaml();
+        Object loaded = yaml.load(yamlContent);
+        if (loaded == null) {
+            throw new IllegalStateException("Endpoint configuration file is empty");
+        }
+        if (!(loaded instanceof Map)) {
+            throw new IllegalStateException("Endpoint configuration root must be a map");
+        }
+        return (Map<String, Object>) loaded;
+    }
+
+    private void validateAgainstSchema(Map<String, Object> config) {
+        if (endpointSchema == null) {
+            return;
+        }
+        Set<ValidationMessage> validationMessages = endpointSchema.validate(objectMapper.valueToTree(config));
+        if (!validationMessages.isEmpty()) {
+            String message = validationMessages.stream()
+                    .map(ValidationMessage::getMessage)
+                    .collect(Collectors.joining("; "));
+            throw new IllegalStateException("Endpoint configuration failed schema validation: " + message);
+        }
+    }
+
+    private JsonSchema loadSchema() {
+        try (InputStream schemaStream = getClass().getClassLoader()
+                .getResourceAsStream("schemas/endpoint-config.schema.json")) {
+            if (schemaStream == null) {
+                LOG.warn("Endpoint config schema not found on classpath; skipping validation");
+                return null;
+            }
+            JsonSchemaFactory factory = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V7);
+            return factory.getSchema(objectMapper.readTree(schemaStream));
+        } catch (Exception e) {
+            LOG.warn("Failed to load endpoint config schema; validation disabled", e);
+            return null;
+        }
     }
 
     /**
@@ -165,44 +233,58 @@ public class EndpointConfigLoader {
     // --- Private methods ---
 
     @SuppressWarnings("unchecked")
-    private void parseEndpoints(Map<String, Object> config) {
-        List<Map<String, Object>> endpoints = (List<Map<String, Object>>) config.get("endpoints");
-        if (endpoints == null) {
-            LOG.warn("No endpoints found in configuration");
-            return;
+    private void parseEndpoints(Map<String, Object> config,
+                                Map<EndpointKey, EndpointConfig> newEndpointMap,
+                                List<PatternEndpoint> newPatternEndpoints) {
+        Object endpointsObj = config.get("endpoints");
+        if (endpointsObj == null) {
+            throw new IllegalStateException("No endpoints found in configuration");
+        }
+        if (!(endpointsObj instanceof List<?> endpoints)) {
+            throw new IllegalStateException("'endpoints' must be a list");
         }
 
-        for (Map<String, Object> ep : endpoints) {
-            try {
-                EndpointConfig endpointConfig = parseEndpointConfig(ep);
-                registerEndpoint(endpointConfig);
-            } catch (Exception e) {
-                LOG.error("Failed to parse endpoint config: {}", ep, e);
+        for (Object epObj : endpoints) {
+            if (!(epObj instanceof Map<?, ?> ep)) {
+                throw new IllegalStateException("Endpoint definition must be a map: " + epObj);
             }
+            EndpointConfig endpointConfig = parseEndpointConfig((Map<String, Object>) ep);
+            registerEndpoint(endpointConfig, newEndpointMap, newPatternEndpoints);
         }
     }
 
     @SuppressWarnings("unchecked")
     private EndpointConfig parseEndpointConfig(Map<String, Object> ep) {
-        String path = (String) ep.get("path");
-        String method = ((String) ep.get("method")).toUpperCase();
-        String sqlId = (String) ep.get("sql-id");
-        String sqlTypeStr = ((String) ep.get("sql-type")).toUpperCase();
+        String path = requireString(ep, "path", "endpoint");
+        String method = requireString(ep, "method", path).toUpperCase(Locale.ROOT);
+        String sqlId = requireString(ep, "sql-id", method + " " + path);
+        String sqlTypeStr = requireString(ep, "sql-type", method + " " + path).toUpperCase(Locale.ROOT);
         String description = (String) ep.get("description");
 
-        SqlType sqlType = SqlType.valueOf(sqlTypeStr);
+        SqlType sqlType;
+        try {
+            sqlType = SqlType.valueOf(sqlTypeStr);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException("Invalid sql-type '" + sqlTypeStr + "' for endpoint " + method + " " + path);
+        }
 
         // Parse validation config
         EndpointConfig.ValidationConfig validation = null;
-        Map<String, Object> validationMap = (Map<String, Object>) ep.get("validation");
-        if (validationMap != null) {
-            validation = parseValidationConfig(validationMap);
+        Object validationObj = ep.get("validation");
+        Map<String, Object> validationMap = validationObj != null
+                ? asMap(validationObj, "validation", method + " " + path)
+                : null;
+        if (validationMap != null && !validationMap.isEmpty()) {
+            validation = parseValidationConfig(validationMap, method + " " + path);
         }
 
         // Parse batch config
         EndpointConfig.BatchConfig batchConfig = null;
-        Map<String, Object> batchMap = (Map<String, Object>) ep.get("batch-config");
-        if (batchMap != null) {
+        Object batchObj = ep.get("batch-config");
+        Map<String, Object> batchMap = batchObj != null
+                ? asMap(batchObj, "batch-config", method + " " + path)
+                : null;
+        if (batchMap != null && !batchMap.isEmpty()) {
             batchConfig = parseBatchConfig(batchMap);
         }
 
@@ -222,22 +304,26 @@ public class EndpointConfigLoader {
     }
 
     @SuppressWarnings("unchecked")
-    private EndpointConfig.ValidationConfig parseValidationConfig(Map<String, Object> validationMap) {
+    private EndpointConfig.ValidationConfig parseValidationConfig(Map<String, Object> validationMap, String context) {
         List<EndpointConfig.ParameterConfig> required = new ArrayList<>();
         List<EndpointConfig.ParameterConfig> optional = new ArrayList<>();
 
-        List<Map<String, Object>> requiredList = (List<Map<String, Object>>) validationMap.get("required");
-        if (requiredList != null) {
-            for (Map<String, Object> param : requiredList) {
-                required.add(parseParameterConfig(param));
+        Object requiredObj = validationMap.get("required");
+        if (requiredObj instanceof List<?> requiredList) {
+            for (Object param : requiredList) {
+                required.add(parseParameterConfig(asMap(param, "validation.required", context)));
             }
+        } else if (requiredObj != null) {
+            throw new IllegalStateException("'validation.required' must be a list for endpoint " + context);
         }
 
-        List<Map<String, Object>> optionalList = (List<Map<String, Object>>) validationMap.get("optional");
-        if (optionalList != null) {
-            for (Map<String, Object> param : optionalList) {
-                optional.add(parseParameterConfig(param));
+        Object optionalObj = validationMap.get("optional");
+        if (optionalObj instanceof List<?> optionalList) {
+            for (Object param : optionalList) {
+                optional.add(parseParameterConfig(asMap(param, "validation.optional", context)));
             }
+        } else if (optionalObj != null) {
+            throw new IllegalStateException("'validation.optional' must be a list for endpoint " + context);
         }
 
         return new EndpointConfig.ValidationConfig(required, optional);
@@ -245,8 +331,8 @@ public class EndpointConfigLoader {
 
     @SuppressWarnings("unchecked")
     private EndpointConfig.ParameterConfig parseParameterConfig(Map<String, Object> param) {
-        String name = (String) param.get("name");
-        String type = (String) param.get("type");
+        String name = requireString(param, "name", "parameter");
+        String type = requireString(param, "type", "parameter " + name);
         String source = (String) param.get("source");
         Integer minLength = getInteger(param, "min-length");
         Integer maxLength = getInteger(param, "max-length");
@@ -266,7 +352,7 @@ public class EndpointConfigLoader {
     }
 
     private EndpointConfig.BatchConfig parseBatchConfig(Map<String, Object> batchMap) {
-        String itemKey = (String) batchMap.get("item-key");
+        String itemKey = requireString(batchMap, "item-key", "batch-config");
         Integer batchSize = getInteger(batchMap, "batch-size");
         return new EndpointConfig.BatchConfig(itemKey, batchSize != null ? batchSize : 100);
     }
@@ -279,18 +365,42 @@ public class EndpointConfigLoader {
         return Integer.parseInt(value.toString());
     }
 
-    private void registerEndpoint(EndpointConfig config) {
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> asMap(Object value, String key, String context) {
+        if (value == null) {
+            throw new IllegalStateException("'" + key + "' entry cannot be null for endpoint " + context);
+        }
+        if (value instanceof Map<?, ?> map) {
+            return (Map<String, Object>) map;
+        }
+        throw new IllegalStateException("'" + key + "' must be an object for endpoint " + context);
+    }
+
+    private String requireString(Map<String, Object> map, String key, String context) {
+        if (map == null) {
+            throw new IllegalStateException("Configuration section missing for " + context);
+        }
+        Object value = map.get(key);
+        if (value == null || value.toString().isBlank()) {
+            throw new IllegalStateException("Missing required field '" + key + "' for " + context);
+        }
+        return value.toString();
+    }
+
+    private void registerEndpoint(EndpointConfig config,
+                                  Map<EndpointKey, EndpointConfig> newEndpointMap,
+                                  List<PatternEndpoint> newPatternEndpoints) {
         String path = config.path();
         String method = config.method();
 
         if (PATH_VARIABLE_PATTERN.matcher(path).find()) {
             // Path contains variables - use pattern matching
             Pattern pattern = compilePathPattern(path);
-            patternEndpoints.add(new PatternEndpoint(method, pattern, config));
+            newPatternEndpoints.add(new PatternEndpoint(method, pattern, config));
             LOG.debug("Registered pattern endpoint: {} {} -> {}", method, path, config.sqlId());
         } else {
             // Exact path match
-            endpointMap.put(new EndpointKey(method, path), config);
+            newEndpointMap.put(new EndpointKey(method, path), config);
             LOG.debug("Registered exact endpoint: {} {} -> {}", method, path, config.sqlId());
         }
     }

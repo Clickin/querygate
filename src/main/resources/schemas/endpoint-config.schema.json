@@ -17,9 +17,9 @@
       "properties": {
         "response-format": {
           "type": "string",
-          "enum": ["json", "xml"],
-          "default": "json",
-          "description": "Default response format"
+          "enum": ["WRAPPED", "RAW", "wrapped", "raw"],
+          "default": "WRAPPED",
+          "description": "Default response format (WRAPPED includes metadata, RAW returns data directly)"
         },
         "max-rows": {
           "type": "integer",
@@ -77,8 +77,8 @@
         },
         "response-format": {
           "type": "string",
-          "enum": ["json", "xml"],
-          "description": "Response format override for this endpoint"
+          "enum": ["WRAPPED", "RAW", "wrapped", "raw"],
+          "description": "Response format override for this endpoint (WRAPPED includes metadata, RAW returns data directly)"
         },
         "validation": {
           "$ref": "#/definitions/validation"

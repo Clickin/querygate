@@ -88,7 +88,9 @@ class ApiKeyTokenValidatorTest {
     private GatewayProperties propertiesWithKeys(List<String> keys) {
         GatewayProperties.SecurityConfig security =
                 new GatewayProperties.SecurityConfig(true, "X-API-Key", keys);
+        GatewayProperties.ErrorHandlingConfig errorHandling =
+                new GatewayProperties.ErrorHandlingConfig(false, false);
 
-        return new GatewayProperties(null, null, null, null, null, security);
+        return new GatewayProperties("./config/endpoint-config.yml", null, null, null, null, security, errorHandling);
     }
 }
