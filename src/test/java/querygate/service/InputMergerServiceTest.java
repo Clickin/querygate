@@ -1,8 +1,10 @@
 package querygate.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micronaut.http.HttpRequest;
 import io.micronaut.http.MediaType;
+import io.micronaut.serde.ObjectMapper;
+import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
+import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -13,15 +15,14 @@ import static org.assertj.core.api.Assertions.*;
  * Unit tests for InputMergerService.
  * Tests parameter merging from path variables, query parameters, and request body.
  */
+@MicronautTest
 class InputMergerServiceTest {
 
-    private final InputMergerService inputMergerService;
-    private final ObjectMapper objectMapper;
+    @Inject
+    InputMergerService inputMergerService;
 
-    InputMergerServiceTest() {
-        this.objectMapper = new ObjectMapper();
-        this.inputMergerService = new InputMergerService(objectMapper);
-    }
+    @Inject
+    ObjectMapper objectMapper;
 
     @Test
     void testWhenMergingPathVariablesThenIncludesInResult() {

@@ -54,3 +54,57 @@ endpoints:
     validation:
       required: []
       optional: []
+
+  - path: /api/health
+    method: GET
+    sql-id: HealthMapper.ping
+    sql-type: SELECT
+    description: "Health check endpoint for testing"
+    validation:
+      required: []
+      optional: []
+
+  - path: /api/event-loop-test
+    method: GET
+    sql-id: TestMapper.eventLoopTest
+    sql-type: SELECT
+    description: "Event loop test endpoint"
+    validation:
+      required: []
+      optional: []
+
+  - path: /api/load-test-data
+    method: POST
+    sql-id: TestMapper.loadTestData
+    sql-type: INSERT
+    description: "Load test data endpoint"
+    validation:
+      required: []
+      optional: []
+
+  - path: /api/metrics-test-data
+    method: GET
+    sql-id: TestMapper.metricsTestData
+    sql-type: SELECT
+    description: "Metrics test data endpoint"
+    validation:
+      required: []
+      optional: []
+
+  - path: /api/virtual-thread-test
+    method: GET
+    sql-id: TestMapper.virtualThreadTest
+    sql-type: SELECT
+    description: "Virtual thread test endpoint"
+    validation:
+      required: []
+      optional: []
+
+  - path: /api/fallback-test-data
+    method: GET
+    sql-id: TestMapper.fallbackTestData
+    sql-type: SELECT
+    description: "Fallback test data endpoint"
+    validation:
+      required: []
+      optional: []
