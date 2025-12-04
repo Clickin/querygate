@@ -130,6 +130,22 @@ gateway:
 ```
 
 ### Endpoint Configuration
+
+**IDE Support with JSON Schema:**
+
+The project includes a JSON Schema (`src/main/resources/schemas/endpoint-config.schema.json`) for IDE autocomplete and validation. Your IDE will automatically provide suggestions and validation if you add this comment at the top of your YAML file:
+
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Clickin/querygate/main/src/main/resources/schemas/endpoint-config.schema.json
+```
+
+For local development, you can also use a relative path:
+```yaml
+# yaml-language-server: $schema=../src/main/resources/schemas/endpoint-config.schema.json
+```
+
+**Configuration File:**
+
 Create/edit `config/endpoint-config.yml`:
 
 ```yaml
